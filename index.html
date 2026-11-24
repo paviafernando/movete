@@ -38,12 +38,15 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 .difs button{border-radius:22px;padding:10px 4px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:17px}
 .difs button b{font-size:38px;line-height:1.1}
 #modos{grid-template-columns:repeat(3,minmax(0,1fr))}
-#mascHud{bottom:max(10px,env(safe-area-inset-bottom))}
+#mascHud{bottom:max(10px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;gap:10px}
+#mascHud .go{pointer-events:auto}
+.cnt{display:inline-block;background:#1d1640;color:#ffd60a;border-radius:12px;padding:0 .35em;margin-left:.2em}
 .masks{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px;pointer-events:auto;max-width:min(980px,100%);background:rgba(28,18,71,.78);border-radius:26px;scrollbar-width:none}
 .masks button{flex:none;width:72px;height:72px;padding:0;font-size:36px;line-height:1;scroll-snap-align:center;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .masks button small{font-size:11px;font-weight:700;margin-top:2px}
 .masks button.sel{background:#ffd60a;transform:scale(1.06)}
-.toggle{display:block;margin:0 auto 16px;background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border:2px solid rgba(255,255,255,.35);font-size:17px}
+.tgs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 16px}
+.toggle{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border:2px solid rgba(255,255,255,.35);font-size:17px}
 .toggle.on{background:#ffd60a;color:var(--ink);border-color:#ffd60a}
 .difs button small{font-weight:500;opacity:.7;font-size:13px}
 .difs button.sel{background:#ffd60a;transform:scale(1.05)}
@@ -110,7 +113,7 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
       <button data-d="medio"><b>🦊</b>Medio<small>un pie, estrella…</small></button>
       <button data-d="dificil"><b>🦁</b>Difícil<small>twister de aros</small></button>
     </div>
-    <button id="bArosOn" class="toggle">⭕ Aros en el piso: no</button>
+    <div class="tgs"><button id="bArosOn" class="toggle">⭕ Aros en el piso: no</button><button id="bOcuOn" class="toggle">🙈 Sin imagen: no</button></div>
     <button id="bStart" class="big go">📷 Prender la cámara</button>
     <a id="bHub" href="https://pf-juegos.vercel.app/?tv" hidden><button class="big" tabindex="-1" style="margin-top:12px">🏠 Todos los juegos</button></a>
     <div id="err" class="err" hidden></div>
@@ -118,7 +121,8 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
       <li>📱 Apoyá el celu parado, lejos (2–3 m), que se vea <b>todo el cuerpo</b>.</li>
       <li>⭕ Opcional: activá <b>Aros en el piso</b> para sumar retos con aros de colores sobre la alfombra.</li>
       <li>😜 <b>Caras:</b> el celu más cerca, a la altura de la cara.</li>
-      <li>🎭 <b>Máscaras:</b> elegí un personaje y mové la cara: ¡copia tus gestos!</li>
+      <li>🎭 <b>Máscaras:</b> elegí un personaje y mové la cara: ¡copia tus gestos! Después jugá a las caras con la máscara puesta.</li>
+      <li>🙈 <b>Sin imagen:</b> en vez de la cámara se ve un muñequito que se mueve como vos.</li>
       <li>💡 Mejor con buena luz y sin otras personas en la imagen.</li>
     </ul>
   </div>
@@ -140,7 +144,7 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 <div id="centro" hidden><div id="cBig"></div></div>
 <div id="hint" hidden></div>
 <div id="espejo" hidden></div>
-<div id="mascHud" class="hud" hidden><div class="masks" id="masks"></div></div>
+<div id="mascHud" class="hud" hidden><button id="bJugarM" class="big go">▶️ ¡A jugar con la máscara!</button><div class="masks" id="masks"></div></div>
 
 <section id="fin" class="panel" hidden>
   <div class="box">
@@ -231,13 +235,13 @@ function aroDesdeToque(img, nx, ny){
 
 // ---------- estado ----------
 const S = { screen:'inicio', facing:'user', stream:null, lm:null, L:null, lastPose:0, lastVT:-1, hoops:[], manual:false,
-  diff:'facil', modo:'cuerpo', aros:false, mask:0, ocultar:false, ms:null, F:null, lmCara:null, sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
-try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; S.modo = localStorage.getItem('movete-modo') || 'cuerpo'; S.aros = localStorage.getItem('movete-aros')==='1'; S.mask = +localStorage.getItem('movete-mask') || 0; }catch(e){}
+  diff:'facil', modo:'cuerpo', aros:false, mask:0, ocultar:false, ms:null, chispas:[], hist:[], err:0, lastProc:0, cpu:false, F:null, lmCara:null, sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
+try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; S.modo = localStorage.getItem('movete-modo') || 'cuerpo'; S.aros = localStorage.getItem('movete-aros')==='1'; S.mask = +localStorage.getItem('movete-mask') || 0; S.ocultar = localStorage.getItem('movete-ocultar')==='1'; }catch(e){}
 
 const DIF = {
-  facil:  {hold:0.8, time:15, total:8,  cara:['sonrisa','boca','ojos','trompita','cachetes'], pool:['manosArriba','avion','agachate','cabeza'], aro:['dentro','dentro','manoEn']},
-  medio:  {hold:1.2, time:10, total:10, cara:['sonrisa','boca','ojos','trompita','cachetes','sorpresa','enojo','cejas'], pool:['manosArriba','avion','agachate','cabeza','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','combo']},
-  dificil:{hold:1.6, time:7,  total:12, cara:['sorpresa','enojo','cejas','guino','triste','trompita','cachetes','ojos'], pool:['avion','agachate','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','twister','twister','combo']},
+  facil:  {hold:0.8, time:15, total:8,  ni:0, movs:['saltar','aplaudir','mono','correr','angelito','piernas'], cara:['sonrisa','boca','ojos','trompita','cachetes'], pool:['manosArriba','avion','agachate','cabeza'], aro:['dentro','dentro','manoEn']},
+  medio:  {hold:1.2, time:10, total:10, ni:1, movs:['saltar','aplaudir','mono','correr','angelito','piernas','tijera','saludar','girar'], cara:['sonrisa','boca','ojos','trompita','cachetes','sorpresa','enojo','cejas'], pool:['manosArriba','avion','agachate','cabeza','flamenco','estrella','rodillas','pies','manoDer','manoIzq'], aro:['dentro','manoEn','combo']},
+  dificil:{hold:1.6, time:7,  total:12, ni:2, movs:['saltar','aplaudir','mono','correr','angelito','piernas','tijera','saludar','girar'], cara:['sorpresa','enojo','cejas','guino','triste','trompita','cachetes','ojos'], pool:['avion','agachate','flamenco','estrella','rodillas','pies','manoDer','manoIzq'], aro:['dentro','manoEn','twister','twister','combo']},
 };
 
 // ---------- poses (P en píxeles de la cámara, m = medidas del cuerpo) ----------
@@ -251,6 +255,7 @@ const POSES = {
   agachate:   {t:'¡Agachate como un sapito!', e:'🐸', ids:[11,12,23,24,25,26], ok:(P,m)=>mid(P[25],P[26]).y-m.hp.y < 0.42*m.T},
   flamenco:   {t:'Parate en un pie, como el flamenco', e:'🦩', ids:[23,24,27,28], ok:(P,m)=>Math.abs(P[27].y-P[28].y)>0.3*m.T},
   estrella:   {t:'¡Hacé una estrella!', e:'⭐', ids:[11,12,15,16,27,28], ok:(P,m)=>P[15].y<m.sh.y && P[16].y<m.sh.y && Math.abs(P[15].x-P[16].x)>1.5*m.T && Math.abs(P[27].x-P[28].x)>0.75*m.T},
+  pies:       {t:'Tocate la punta de los pies', e:'🦶', ids:[15,16,27,28], ok:(P,m)=>[15,16].every(w=>Math.min(dist(P[w],P[27]),dist(P[w],P[28]))<0.6*m.T)},
   rodillas:   {t:'Tocate las rodillas', e:'🦵', ids:[15,16,25,26], ok:(P,m)=>[15,16].every(w=>Math.min(dist(P[w],P[25]),dist(P[w],P[26]))<0.55*m.T)},
   manoDer:    {t:'Levantá la mano <u>derecha</u>', e:'✋', ids:[0,11,12,15,16], ok:(P,m)=>P[16].y<P[0].y && P[15].y>m.sh.y},
   manoIzq:    {t:'Levantá la mano <u>izquierda</u>', e:'🤚', ids:[0,11,12,15,16], ok:(P,m)=>P[15].y<P[0].y && P[16].y>m.sh.y},
@@ -278,23 +283,16 @@ const EXPR = {
   triste:  {t:'Cara de triste',             e:'😢', th:1,    v:B=>Math.min(par(B,'mouthFrown')/0.25, bv(B,'browInnerUp')/0.3)},
 };
 // ---------- máscaras ----------
-const PERS = [
-  {n:'Gato',     ic:'🐱', col:'#ffb347', ears:'gato',   inner:'#ffd1dc', muzzle:'#fff4e0', nose:'#ff6f91', whisk:1},
-  {n:'Perro',    ic:'🐶', col:'#c99060', ears:'perro',  earCol:'#7a4a2a', muzzle:'#f3dcc0', nose:'#2b1b12'},
-  {n:'Oso',      ic:'🐻', col:'#9b6634', ears:'oso',    inner:'#d9a066', muzzle:'#e2b47a', nose:'#2b1b12'},
-  {n:'Panda',    ic:'🐼', col:'#ffffff', ears:'oso',    earCol:'#222', inner:'#444', patches:'#222', nose:'#222'},
-  {n:'Conejo',   ic:'🐰', col:'#f4f4f4', ears:'conejo', inner:'#ffc0cb', nose:'#ff8fab', whisk:1},
-  {n:'Zorro',    ic:'🦊', col:'#ff7a1a', ears:'gato',   inner:'#fff', muzzle:'#fff', nose:'#222', whisk:1},
-  {n:'Chancho',  ic:'🐷', col:'#ffb6c1', ears:'gato',   inner:'#ff8fab', pig:1},
-  {n:'León',     ic:'🦁', col:'#f5c542', mane:'#c8741a', ears:'oso', inner:'#e0a030', muzzle:'#fff2c7', nose:'#6b3e1f', whisk:1},
-  {n:'Rana',     ic:'🐸', col:'#58c74a', frog:1},
-  {n:'Unicornio',ic:'🦄', col:'#ffffff', mane:'#c9a0ff', ears:'gato', inner:'#ffc0e0', horn:1},
-  {n:'Mono',     ic:'🐵', col:'#8b5a2b', ears:'oso',    inner:'#f1c27d', muzzle:'#f1c27d', nose:'#5a3a1a'},
-  {n:'Robot',    ic:'🤖', col:'#b8c4d6', square:1, antena:1},
-  {n:'Princesa', ic:'👸', col:'#ffd9c2', hair:'#7a4a2a', crown:1, nose:'#f0a890'},
-];
-const EMOJIS = ['auto','🐸','🐵','🐼','🐯','🦁','🐷','🐶','🐱','🦄','🤖','👽','🎃','🤡','😎','👻','🥸'];
-const MASKS = [...PERS.map(p=>({p, ic:p.ic, n:p.n})), ...EMOJIS.map(e=>({e, ic:e==='auto'?'😀':e, n:e==='auto'?'Copiona':''}))];
+const SET_CARA = {neutro:'😐',poco:'🙂',sonrisa:'😁',boca:'😮',sorpresa:'😲',beso:'😘',guino:'😉',ojos:'😌',cachetes:'😤',enojo:'😠',triste:'😢'};
+const SET_GATO = {neutro:'🐱',poco:'😺',sonrisa:'😸',boca:'🙀',sorpresa:'🙀',beso:'😽',guino:'😼',ojos:'😹',cachetes:'😼',enojo:'😾',triste:'😿'};
+const SET_MONO = {neutro:'🐵',ojos:'🙈',beso:'🙊',cachetes:'🙊',boca:'🙉',sorpresa:'🙉'};
+const MASKS = [{n:'Copiona',ic:'😀',set:SET_CARA},{n:'Gatito',ic:'😺',set:SET_GATO},{n:'Monito',ic:'🙈',set:SET_MONO},
+  ...[['🐶','Perro'],['🦊','Zorro'],['🐼','Panda'],['🐯','Tigre'],['🦁','León'],['🐷','Chancho'],['🐰','Conejo'],['🐻','Oso'],['🐨','Koala'],['🐸','Rana'],
+      ['🦄','Unicornio'],['🐔','Gallina'],['🐧','Pingüino'],['👸','Princesa'],['🤴','Príncipe'],['🦸','Súper'],['🤖','Robot'],['👽','Alien'],['🎃','Calabaza'],
+      ['🤡','Payaso'],['😎','Canchero'],['👻','Fantasma'],['🥸','Disfraz']].map(([e,n])=>({e,n,ic:e}))];
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif';
+if(!(S.mask < MASKS.length)) S.mask = 0;
+const caraDe = mk => mk.set ? (mk.set.poco||mk.set.neutro) : mk.e;
 function estadoCara(F){
   const f=F.pts, B=F.bs, P=i=>{ const [x,y]=map(f[i].x,f[i].y); return {x,y}; };
   const L=P(234), Rr=P(454), top=P(10), chin=P(152), nose=P(1);
@@ -307,62 +305,62 @@ function estadoCara(F){
     pucker:bv(B,'mouthPucker'), puff:Math.min(1,Math.max((B._ancho||0)/0.05, bv(B,'cheekPuff')/0.2))};
 }
 function suavizar(s){ if(!S.ms){ S.ms={...s}; return S.ms; } for(const k in s){ let d=s[k]-S.ms[k]; if(k==='rot'){ if(d>Math.PI) d-=2*Math.PI; if(d<-Math.PI) d+=2*Math.PI; } S.ms[k]+=d*0.55; } return S.ms; }
-function emojiAuto(s){
-  if(s.jaw>0.45 && s.bu>0.4) return '😲'; if(s.jaw>0.35) return '😮'; if(s.pucker>0.5) return '😘';
-  if(Math.abs(s.bl-s.br)>0.45) return '😉'; if(s.bl>0.55 && s.br>0.55) return '😌'; if(s.puff>0.8) return '🐡';
-  if(s.bd>0.45) return '😠'; if(s.frown>0.25 && s.bu>0.3) return '😢'; if(s.smile>0.55) return '😁'; if(s.smile>0.25) return '🙂'; return '😐'; }
+function gesto(s){
+  if(s.jaw>0.45 && s.bu>0.4) return 'sorpresa'; if(s.jaw>0.35) return 'boca'; if(s.pucker>0.5) return 'beso';
+  if(Math.abs(s.bl-s.br)>0.45) return 'guino'; if(s.bl>0.55 && s.br>0.55) return 'ojos'; if(s.puff>0.8) return 'cachetes';
+  if(s.bd>0.45) return 'enojo'; if(s.frown>0.25 && s.bu>0.3) return 'triste'; if(s.smile>0.55) return 'sonrisa'; if(s.smile>0.25) return 'poco'; return 'neutro'; }
+const CHISPAS = {beso:'💕', sonrisa:'✨', enojo:'💢', triste:'💧', sorpresa:'❗', cachetes:'💨', guino:'⭐', boca:'🎵'};
+let chispaT = 0;
+// El emoji sigue la cabeza (posición, tamaño, inclinación) y reacciona: se estira con la boca, se ensancha con los cachetes,
+// rebota al sonreír, se aplasta al cerrar los ojos y larga corazones, brillitos, gotitas…
 function dibujarMascara(c, s, mk, t){
-  const R=s.R; c.save(); c.translate(s.cx,s.cy); c.rotate(s.rot);
-  if(mk.e){ c.font=`${R*2.25}px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif`; c.textAlign='center'; c.textBaseline='middle';
-    const sx = 1+s.puff*0.12; c.scale(sx,1); c.fillText(mk.e==='auto'?emojiAuto(s):mk.e, 0, R*0.08); c.restore(); return; }
-  const p=mk.p, px=1+s.puff*0.14, line=R*0.05;
-  c.lineWidth=line; c.strokeStyle='rgba(0,0,0,.35)'; c.lineJoin='round'; c.lineCap='round';
-  const el=(x,y,rx,ry,col,st=1,r=0)=>{ c.beginPath(); c.ellipse(x,y,rx,ry,r,0,Math.PI*2); c.fillStyle=col; c.fill(); if(st) c.stroke(); };
-  const poly=(pts,col,st=1)=>{ c.beginPath(); pts.forEach(([x,y],i)=>i?c.lineTo(x*R,y*R):c.moveTo(x*R,y*R)); c.closePath(); c.fillStyle=col; c.fill(); if(st) c.stroke(); };
-  const er=p.earCol||p.col;
-  if(p.hair) el(0,R*0.15,R*1.12,R*1.15,p.hair);
-  if(p.mane){ c.beginPath(); for(let i=0;i<=28;i++){ const a=i/28*Math.PI*2, r=R*(i%2?1.22:1.42); c.lineTo(Math.cos(a)*r*px,Math.sin(a)*r); } c.closePath(); c.fillStyle=p.mane; c.fill(); c.stroke(); }
-  for(const sx of [-1,1]){
-    if(p.ears==='gato'){ poly([[sx*0.85,-0.3],[sx*0.78,-1.18],[sx*0.18,-0.78]],er); poly([[sx*0.72,-0.48],[sx*0.7,-0.98],[sx*0.36,-0.74]],p.inner||er,0); }
-    if(p.ears==='oso'){ el(sx*0.72*R,-0.75*R,0.3*R,0.3*R,er); el(sx*0.72*R,-0.75*R,0.16*R,0.16*R,p.inner||er,0); }
-    if(p.ears==='conejo'){ el(sx*0.36*R,-1.3*R,0.2*R,0.62*R,er,1,sx*0.15); el(sx*0.36*R,-1.28*R,0.1*R,0.46*R,p.inner||er,0,sx*0.15); }
-  }
-  if(p.horn){ poly([[-0.15,-0.85],[0.15,-0.85],[0,-1.6]],'#ffd84d'); }
-  if(p.antena){ c.beginPath(); c.moveTo(0,-0.95*R); c.lineTo(0,-1.4*R); c.stroke(); el(0,-1.45*R,0.11*R,0.11*R, Math.sin(t/200)>0?'#ff4f4f':'#ffd84d'); }
-  c.beginPath(); if(p.square) c.roundRect(-R*px,-R*0.95,2*R*px,1.9*R,R*0.3); else c.ellipse(0,0,R*px,R*0.95,0,0,Math.PI*2);
-  c.fillStyle=p.col; c.fill(); c.stroke();
-  if(p.ears==='perro') for(const sx of [-1,1]) el(sx*0.95*R*px,-0.05*R,0.26*R,0.6*R,er,1,sx*0.3);
-  if(p.hair){ c.beginPath(); c.ellipse(0,-0.5*R,R*0.98,R*0.45,0,Math.PI,2*Math.PI); c.fillStyle=p.hair; c.fill(); }
-  if(p.patches) for(const sx of [-1,1]) el(sx*0.36*R,-0.06*R,0.24*R,0.3*R,p.patches,0,sx*0.5);
-  if(p.muzzle) el(0,0.36*R,0.55*R*px,0.42*R,p.muzzle,0);
-  c.globalAlpha=0.3+0.45*Math.min(1,s.smile+s.puff); for(const sx of [-1,1]) el(sx*0.62*R*px,0.3*R,0.14*R*(1+s.puff*0.6),0.1*R*(1+s.puff*0.6),'#ff6f91',0); c.globalAlpha=1;
-  const ey=(p.frog?-0.72:-0.1)*R, ex=0.36*R, rr=(p.frog?0.22:0.17)*R*(1+s.bu*0.25);
-  for(const sx of [-1,1]){ const blink = sx<0 ? s.bl : s.br, open=Math.max(0,1-blink*1.3), x=sx*ex+s.lx*0.1*R;
-    if(p.frog) el(sx*ex,ey,rr*1.3,rr*1.3,p.col);
-    if(open<0.18){ c.beginPath(); c.arc(x,ey,rr*0.8,0.15*Math.PI,0.85*Math.PI); c.strokeStyle='#1a1030'; c.lineWidth=R*0.06; c.stroke(); c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=line; }
-    else if(p.square){ c.fillStyle='#29e0ff'; c.fillRect(x-rr*0.8,ey-rr*0.8*open,rr*1.6,rr*1.6*open); }
-    else { el(x,ey,rr,rr*1.1*open,'#fff'); el(x+s.lx*rr*0.35,ey,rr*0.55,rr*0.55*Math.min(1,open*1.3),'#1a1030',0); el(x+s.lx*rr*0.35-rr*0.18,ey-rr*0.2,rr*0.16,rr*0.16,'#fff',0); }
-  }
-  if(!p.frog && !p.square){ c.strokeStyle = p.hair || 'rgba(40,20,10,.75)'; c.lineWidth=R*0.07;
-    for(const sx of [-1,1]){ const y=ey-rr*1.55-s.bu*0.12*R+s.bd*0.05*R; c.beginPath();
-      c.moveTo(sx*(ex-0.17*R), y+s.bd*0.1*R-s.frown*0.06*R); c.lineTo(sx*(ex+0.17*R), y-s.bd*0.04*R); c.stroke(); }
-    c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=line; }
-  if(p.pig){ el(0,0.2*R,0.27*R,0.19*R,'#ff8fab'); for(const sx of [-1,1]) el(sx*0.09*R,0.2*R,0.04*R,0.07*R,'#a0405a',0); }
-  else if(p.nose) el(0,0.14*R,0.1*R,0.07*R,p.nose,0);
-  if(p.whisk){ c.strokeStyle='rgba(0,0,0,.45)'; c.lineWidth=R*0.025; for(const sx of [-1,1]) for(const k of [-1,0,1]){ c.beginPath(); c.moveTo(sx*0.28*R,(0.26+k*0.06)*R); c.lineTo(sx*0.88*R,(0.2+k*0.14)*R); c.stroke(); } c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=line; }
-  const my=(p.frog?0.3:p.pig?0.5:0.47)*R, mw=(p.frog?0.55:0.28)*R*(1+s.smile*0.35)*(1-s.pucker*0.55);
-  if(s.jaw>0.12){ const hh=R*(0.05+s.jaw*0.42); el(0,my+hh*0.4,mw*0.85,hh,'#5b1a2e'); c.save(); c.beginPath(); c.ellipse(0,my+hh*0.4,mw*0.85,hh,0,0,Math.PI*2); c.clip(); el(0,my+hh*1.1,mw*0.5,hh*0.45,'#ff6f91',0); c.restore(); }
-  else if(s.pucker>0.45){ el(0,my,0.08*R,0.08*R,'#ff8fab'); }
-  else { c.beginPath(); c.moveTo(-mw,my-s.smile*0.05*R); c.quadraticCurveTo(0,my+(0.04+s.smile*0.22-s.frown*0.2)*R,mw,my-s.smile*0.05*R);
-    c.strokeStyle='#3b1a1a'; c.lineWidth=R*0.055; c.stroke(); }
-  if(p.crown){ c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=line; poly([[-0.5,-0.82],[-0.55,-1.25],[-0.28,-1.02],[0,-1.38],[0.28,-1.02],[0.55,-1.25],[0.5,-0.82]],'#ffd84d');
-    el(0,-1.0*R,0.07*R,0.07*R,'#ff4fb0',0); el(-0.3*R,-0.92*R,0.05*R,0.05*R,'#2f7bff',0); el(0.3*R,-0.92*R,0.05*R,0.05*R,'#21c46b',0); }
-  c.restore();
+  const R=s.R, g=gesto(s), e = mk.set ? (mk.set[g]||mk.set.neutro) : mk.e;
+  const sx = 1 + s.puff*0.16 + s.smile*0.05, sy = 1 + s.jaw*0.22 - Math.max(s.bl,s.br)*0.07, by = -Math.abs(Math.sin(t/110))*R*0.07*s.smile;
+  c.save(); c.translate(s.cx, s.cy+by); c.rotate(s.rot); c.scale(sx, sy);
+  c.font=`${Math.round(R*2.3)}px ${EMOJI_FONT}`; c.textAlign='center'; c.textBaseline='middle'; c.fillText(e, 0, R*0.08); c.restore();
+  const ch = CHISPAS[g];
+  if(ch && t-chispaT > 280){ chispaT = t; const a = s.rot - Math.PI/2 + (Math.random()<0.5?-1:1)*(0.5+Math.random()*0.6);
+    S.chispas.push({e:ch, x:s.cx+Math.cos(a)*R*1.1, y:s.cy+Math.sin(a)*R*1.1, vx:Math.cos(a)*R*0.7, vy:Math.sin(a)*R*0.7-R*0.3, life:1.2, z:R*0.5}); }
 }
+function dibujarChispas(c, dt){ S.chispas = S.chispas.filter(p=>(p.life-=dt)>0);
+  c.textAlign='center'; c.textBaseline='middle';
+  for(const p of S.chispas){ p.x+=p.vx*dt; p.y+=p.vy*dt; c.globalAlpha=Math.min(1,p.life*1.5); c.font=`${Math.round(p.z)}px ${EMOJI_FONT}`; c.fillText(p.e,p.x,p.y); }
+  c.globalAlpha=1; }
 function pintarMasks(){ $('#masks').innerHTML = MASKS.map((m,i)=>`<button data-i="${i}" class="${i===S.mask?'sel':''}" title="${m.n}">${m.ic}${m.n?`<small>${m.n}</small>`:''}</button>`).join(''); }
 function elegirMask(i){ S.mask=(i+MASKS.length)%MASKS.length; try{localStorage.setItem('movete-mask',S.mask);}catch(e){}
   document.querySelectorAll('#masks button').forEach((b,j)=>b.classList.toggle('sel',j===S.mask));
   document.querySelector(`#masks button[data-i="${S.mask}"]`)?.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'}); beep(700+S.mask*20,0.08,'triangle',0.12); }
+// ---------- movimientos (se cuentan repeticiones) ----------
+const sep = (P,a,b) => Math.abs(P[a].x-P[b].x);
+// altura de un punto medida a lo largo del cuerpo (0 = cadera, 1 = hombros): sirve parado o acostado
+const arriba = (P,m,i) => { const ux=(m.sh.x-m.hp.x)/m.T, uy=(m.sh.y-m.hp.y)/m.T; return ((P[i].x-m.hp.x)*ux+(P[i].y-m.hp.y)*uy)/m.T; };
+const MOVS = {
+  saltar:  {t:'¡Saltá {n} veces!', e:'🐸', n:[3,4,5], ids:[27,28], modo:'vuelta', A:(P,m,x)=>x.ay > x.base-0.06*m.T, B:(P,m,x)=>x.ay < x.base-0.16*m.T},
+  aplaudir:{t:'¡Aplaudí {n} veces!', e:'👏', n:[3,5,6], ids:[15,16], modo:'B', A:(P,m)=>dist(P[15],P[16])>0.75*m.T, B:(P,m)=>dist(P[15],P[16])<0.3*m.T},
+  piernas: {t:'Abrí y cerrá las piernas {n} veces', e:'🦵', n:[3,4,6], ids:[27,28], modo:'vuelta', A:(P,m)=>sep(P,27,28)<0.6*m.T, B:(P,m)=>sep(P,27,28)>1.0*m.T},
+  mono:    {t:'¡Trepá como un mono!', e:'🐵', n:[4,6,8], ids:[0,15,16], modo:'alterna', A:(P,m)=>P[15].y<P[0].y && P[16].y>m.sh.y, B:(P,m)=>P[16].y<P[0].y && P[15].y>m.sh.y},
+  correr:  {t:'¡Corré en el lugar, rodillas arriba!', e:'🏃', n:[6,8,12], ids:[23,24,25,26], modo:'alterna',
+            A:(P,m)=>P[25].y-P[23].y<0.5*m.T && P[26].y-P[24].y>0.65*m.T, B:(P,m)=>P[26].y-P[24].y<0.5*m.T && P[25].y-P[23].y>0.65*m.T},
+  angelito:{t:'Hacé {n} angelitos con los brazos', e:'😇', n:[2,3,4], ids:[11,12,15,16,23,24], modo:'vuelta', rastro:true,
+            A:(P,m)=>arriba(P,m,15)<0.35 && arriba(P,m,16)<0.35, B:(P,m)=>arriba(P,m,15)>1.15 && arriba(P,m,16)>1.15},
+  tijera:  {t:'¡{n} saltos de tijera!', e:'🤸', n:[3,4,6], ids:[0,15,16,27,28], modo:'vuelta',
+            A:(P,m)=>P[15].y>m.sh.y && P[16].y>m.sh.y && sep(P,27,28)<0.65*m.T, B:(P,m)=>P[15].y<P[0].y && P[16].y<P[0].y && sep(P,27,28)>0.95*m.T},
+  saludar: {t:'¡Saludá con la mano!', e:'👋', n:[4,6,6], ids:[11,12,13,14,15,16], modo:'alterna',
+            A:(P,m)=>{ const w=P[15].y<P[16].y?15:16; return P[w].y<m.sh.y && P[w].x<P[w-2].x-0.12*m.T; },
+            B:(P,m)=>{ const w=P[15].y<P[16].y?15:16; return P[w].y<m.sh.y && P[w].x>P[w-2].x+0.12*m.T; }},
+  girar:   {t:'¡Date una vuelta entera!', e:'🔄', n:[1,1,2], ids:[11,12], modo:'vuelta',
+            A:(P,m,x,L)=>(L[0].visibility??1)>0.7 && P[11].x-P[12].x>0.3*m.T, B:(P,m,x,L)=>(L[0].visibility??1)<0.35 || P[12].x-P[11].x>0.3*m.T},
+};
+function movCtx(P,m,t){ const ay=(P[27].y+P[28].y)/2, h=S.hist; h.push([t,ay]); while(h.length && t-h[0][0]>1500) h.shift();
+  let base=ay; for(const [,y] of h) if(y>base) base=y; return {ay, base}; }
+const NUM = ['','¡Uno!','¡Dos!','¡Tres!','¡Cuatro!','¡Cinco!','¡Seis!','¡Siete!','¡Ocho!','¡Nueve!','¡Diez!','¡Once!','¡Doce!'];
+function contar(g){ g.cnt++; beep(520+g.cnt*80,0.12,'triangle',0.2); const c=$('#rCnt'); if(c) c.textContent=`${Math.min(g.cnt,g.ch.n)}/${g.ch.n}`;
+  if(g.cnt<g.ch.n) decir(NUM[g.cnt]||String(g.cnt)); }
+function avanzar(g, modo, a, b){
+  if(modo==='B'){ if(g.ph===0 && a) g.ph=1; else if(g.ph===1 && b){ g.ph=0; contar(g); } }
+  else if(modo==='vuelta'){ if(g.ph===0 && a) g.ph=1; else if(g.ph===1 && b) g.ph=2; else if(g.ph===2 && a){ g.ph=1; contar(g); } }
+  else { if(g.ph!==1 && a){ if(g.ph) contar(g); g.ph=1; } else if(g.ph!==2 && b){ if(g.ph) contar(g); g.ph=2; } }
+}
 const visibles = (L,ids) => ids.every(i => L[i] && (L[i].visibility ?? 1) > 0.5);
 function pix(L){ const w=vid.videoWidth||1, h=vid.videoHeight||1; return L.map(p=>({x:p.x*w, y:p.y*h})); }
 function medidas(P){ const sh=mid(P[11],P[12]), hp=mid(P[23],P[24]); return {sh, hp, T:Math.max(dist(sh,hp),1)}; }
@@ -373,11 +371,13 @@ const enColor = (p,c,s) => S.hoops.some(a => a.color===c && enAro(p,a,s));
 const tag = c => `<span class="c" style="background:${COLORES[c].css}">${COLORES[c].nombre}</span>`;
 
 function crearReto(){
-  if(S.modo==='cara'){ const pool = DIF[S.diff].cara.filter(k=>k!==S.g.lastKey), k = pool[Math.floor(Math.random()*pool.length)], x = EXPR[k];
+  if(S.modo!=='cuerpo'){ const pool = DIF[S.diff].cara.filter(k=>k!==S.g.lastKey), k = pool[Math.floor(Math.random()*pool.length)], x = EXPR[k];
     return {key:k, t:x.t, e:x.e, voz:x.t, aros:[], cara:true, v:x.v, th:x.th}; }
   const D = DIF[S.diff], cols = [...new Set(S.hoops.map(a=>a.color))], g = S.g, ops = [];
   for(const k of D.pool){ const p = POSES[k];
     ops.push({key:k, t:p.t, e:p.e, voz:p.t, aros:[], pies:p.ids.some(i=>PIES.includes(i)), ok:(P,m,L)=>visibles(L,p.ids) && p.ok(P,m)}); }
+  for(const k of D.movs){ const x = MOVS[k], n = x.n[D.ni], tt = x.t.replace('{n}', n);
+    ops.push({key:k, t:tt, e:x.e, voz:tt, aros:[], pies:x.ids.some(i=>PIES.includes(i)), mov:x, n}); }
   const nPose = ops.length, extra = [];
   const r = a => a[Math.floor(Math.random()*a.length)];
   if(cols.length) for(const tipo of D.aro){ const c = r(cols), C = COLORES[c];
@@ -419,13 +419,14 @@ async function cargarDetector(){
   const mod = await import(MP + '/vision_bundle.mjs');
   const {FilesetResolver, PoseLandmarker} = mod.FilesetResolver ? mod : mod.default;
   const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
+  const dlg = S.cpu ? 'CPU' : 'GPU';
   const opts = d => ({baseOptions:{modelAssetPath:MODEL, delegate:d}, runningMode:'VIDEO', numPoses:1,
     minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5});
   if(usaCara){ const {FaceLandmarker} = mod.FaceLandmarker ? mod : mod.default;
     const fo = d => ({baseOptions:{modelAssetPath:MODEL_CARA, delegate:d}, runningMode:'VIDEO', numFaces:1, outputFaceBlendshapes:true});
-    try{ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo('GPU')); } catch(e){ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo('CPU')); }
+    try{ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo(dlg)); } catch(e){ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo('CPU')); }
     return; }
-  try{ S.lm = await PoseLandmarker.createFromOptions(fs, opts('GPU')); }
+  try{ S.lm = await PoseLandmarker.createFromOptions(fs, opts(dlg)); }
   catch(e){ S.lm = await PoseLandmarker.createFromOptions(fs, opts('CPU')); }
 }
 async function prenderCamara(){
@@ -436,8 +437,10 @@ async function prenderCamara(){
   S.mirror = (st.facingMode || S.facing) !== 'environment';
 }
 let wake;
+async function rescatar(){ try{ const tr = S.stream && S.stream.getVideoTracks()[0];
+  if(!tr || tr.readyState==='ended' || tr.muted) await prenderCamara(); else if(vid.paused) await vid.play(); S.lastProc = 0; }catch(e){} }
 async function despierto(){ try{ wake = await navigator.wakeLock?.request('screen'); }catch(e){} }
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && S.screen!=='inicio') despierto(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && S.screen!=='inicio'){ despierto(); rescatar(); } });
 
 const off = document.createElement('canvas'), octx = off.getContext('2d', {willReadFrequently:true});
 function foto(){ const W=200, H=Math.round(200*(vid.videoHeight||540)/(vid.videoWidth||960)); off.width=W; off.height=H;
@@ -448,15 +451,18 @@ function mostrar(sc){ S.screen = sc;
   $('#inicio').hidden = sc!=='inicio'; $('#fin').hidden = sc!=='fin';
   $('#calibHud').hidden = sc!=='calib'; $('#juegoHud').hidden = true; $('#score').hidden = sc!=='juego';
   $('#centro').hidden = true; $('#hint').hidden = true; $('#espejo').hidden = !(sc==='juego' && S.modo==='cara');
-  $('#mascHud').hidden = sc!=='mascara'; $('#bOcultar').hidden = sc!=='mascara'; if(sc==='mascara'){ S.ms=null; pintarMasks(); setTimeout(()=>elegirMask(S.mask),50); }
+  $('#mascHud').hidden = sc!=='mascara'; $('#bOcultar').hidden = !(sc==='mascara' || (sc==='juego' && S.modo!=='cara')); pintarOcultar(); if(sc==='mascara'){ S.ms=null; pintarMasks(); setTimeout(()=>elegirMask(S.mask),50); }
   $('#bHome').hidden = sc==='inicio'; $('#bCam').hidden = sc!=='calib';
   if(sc==='calib'){ S.manual=false; S.scanT=0; }
 }
 const DLAB = {cuerpo:['poses simples','un pie, estrella…','más rápido'], aros:['poses y aros','un pie, estrella…','twister de aros'], cara:['sonrisa, boca…','sorpresa, enojo…','guiño, triste…']};
+DLAB.mascara = DLAB.cara;
 function pintarDifs(){ document.querySelectorAll('#difs button').forEach((b,i)=>{ b.classList.toggle('sel', b.dataset.d===S.diff); b.querySelector('small').textContent = (DLAB[S.modo==='cuerpo' && S.aros ? 'aros' : S.modo]||[])[i]||''; });
-  $('#difs').hidden = S.modo==='mascara';
   const t = $('#bArosOn'); t.hidden = S.modo!=='cuerpo'; t.classList.toggle('on', S.aros); t.textContent = '⭕ Aros en el piso: ' + (S.aros ? 'sí' : 'no');
+  const o = $('#bOcuOn'); o.hidden = S.modo==='cara'; o.classList.toggle('on', S.ocultar); o.textContent = '🙈 Sin imagen: ' + (S.ocultar ? 'sí' : 'no');
   document.querySelectorAll('#modos button').forEach(b=>b.classList.toggle('sel', b.dataset.m===S.modo)); }
+function pintarOcultar(){ $('#bOcultar').textContent = S.ocultar ? '📷' : '🙈'; }
+function ponerOcultar(v){ S.ocultar=v; try{localStorage.setItem('movete-ocultar',v?'1':'0');}catch(e){} pintarOcultar(); pintarDifs(); }
 function pintarSnd(){ $('#bSnd').textContent = S.sound ? '🔊' : '🔇'; }
 function centro(html){ const c=$('#centro'); c.hidden=!html; $('#cBig').innerHTML = html||''; }
 
@@ -474,15 +480,16 @@ function empezarJuego(){
   decir('¿Listos? ¡Tres, dos, uno!');
 }
 function nuevaRonda(){ const g=S.g, D=DIF[S.diff];
-  g.round++; g.ch = crearReto(); g.lastKey = g.ch.key; g.hold = 0; g.left = D.time; g.phase = 'reto';
+  g.round++; g.ch = crearReto(); g.lastKey = g.ch.key; g.hold = 0; g.cnt = 0; g.ph = 0; g.trail = {}; S.hist = [];
+  g.tMax = g.ch.mov ? Math.max(D.time*1.5, g.ch.n*2.6) : D.time; g.left = g.tMax; g.phase = 'reto';
   centro(''); $('#juegoHud').hidden = false; $('#sRonda').textContent = `${g.round}/${g.total}`;
   const r = $('#reto'); r.style.animation='none'; r.offsetHeight; r.style.animation='';
-  $('#rEmoji').textContent = g.ch.e; $('#rText').innerHTML = g.ch.t; $('#rMeterBox').hidden = !g.ch.cara; $('#rMeter').style.width = '0';
+  $('#rEmoji').textContent = g.ch.e; $('#rText').innerHTML = g.ch.t + (g.ch.mov ? ` <span class="cnt" id="rCnt">0/${g.ch.n}</span>` : ''); $('#rMeterBox').hidden = !g.ch.cara; $('#rMeter').style.width = '0';
   decir(g.ch.voz);
 }
 function terminarRonda(bien){ const g=S.g, D=DIF[S.diff];
   g.phase = 'pausa'; g.wait = 1.6; $('#juegoHud').hidden = true; $('#hint').hidden = true;
-  if(bien){ const f = g.left/D.time, st = f>0.6?3:f>0.3?2:1; g.stars += st;
+  if(bien){ const f = g.left/g.tMax, st = f>0.6?3:f>0.3?2:1; g.stars += st;
     $('#sStars').textContent = g.stars; SND.ok();
     centro(`<div>${'⭐'.repeat(st)}</div><p>${['¡Bien!','¡Genial!','¡Muy bien!','¡Bravo!','¡Sos una genia!'][Math.floor(Math.random()*5)]}</p>`);
     decir(['¡Muy bien!','¡Genial!','¡Bravo!','¡Excelente!'][Math.floor(Math.random()*4)]);
@@ -493,7 +500,7 @@ function fin(){ const g=S.g, max=g.total*3; mostrar('fin');
   const n = Math.round(g.stars/max*5);
   $('#fStars').textContent = '⭐'.repeat(Math.max(1,n)) + '☆'.repeat(5-Math.max(1,n));
   $('#fText').textContent = `Juntaste ${g.stars} estrellas de ${max}`;
-  const rk = 'movete-rec-'+(S.modo==='cara'?'cara-':'')+S.diff; $('#bAros').hidden = S.modo==='cara' || !S.aros;
+  const rk = 'movete-rec-'+(S.modo==='cara'?'cara-':'')+S.diff; $('#bAros').hidden = S.modo==='cara' || (S.modo==='cuerpo' && !S.aros); $('#bAros').textContent = S.modo==='mascara' ? '🎭 Máscaras' : '⭕ Mover aros';
   let rec = 0; try{ rec = +localStorage.getItem(rk) || 0; }catch(e){}
   if(g.stars > rec){ try{ localStorage.setItem(rk, g.stars); }catch(e){}
     $('#fRec').textContent = '🏆 ¡Nuevo récord!'; decir(`¡Nuevo récord! ${g.stars} estrellas`); festejo(); festejo(); }
@@ -505,30 +512,48 @@ function tick(dt){ const g=S.g; if(!g) return;
     if(g.cd <= -0.4) nuevaRonda(); return; }
   if(g.phase==='pausa'){ g.wait -= dt; if(g.wait<=0){ g.round>=g.total ? fin() : nuevaRonda(); } return; }
   if(g.phase!=='reto') return;
-  const h = $('#hint'), D = DIF[S.diff];
+  const h = $('#hint'), D = DIF[S.diff], ch = g.ch;
   let ok = false;
-  if(g.ch.cara){
+  if(ch.cara){
     if(!S.F){ h.hidden=false; h.textContent='👀 ¡No veo tu carita! Acercate a la cámara'; return; }
-    h.hidden = true; const v = g.ch.v(S.F.bs); ok = v >= g.ch.th;
-    $('#rMeter').style.width = Math.min(100, v/g.ch.th*100)+'%';
+    h.hidden = true; const v = ch.v(S.F.bs); ok = v >= ch.th;
+    $('#rMeter').style.width = Math.min(100, v/ch.th*100)+'%';
     let best='🙂', bl=0.8; for(const k in EXPR){ const x=EXPR[k], l=x.v(S.F.bs)/x.th; if(l>bl){ bl=l; best=x.e; } }
     $('#espejo').textContent = best;
   } else {
-  if(!S.L){ h.hidden=false; h.textContent='👀 ¡No te veo! Ponete frente a la cámara'; return; } // pausa el tiempo
-  const L = S.L, P = pix(L), m = medidas(P);
-  if(g.ch.pies && !visibles(L,[27,28])){ h.hidden=false; h.textContent='🦶 ¡Que se vean los pies!'; } else h.hidden=true;
-  try{ ok = g.ch.ok(P,m,L); }catch(e){}
+    if(!S.L){ h.hidden=false; h.textContent='👀 ¡No te veo! Ponete frente a la cámara'; return; } // pausa el tiempo
+    const L = S.L, P = pix(L), m = medidas(P), faltan = ch.mov ? !visibles(L, ch.mov.ids) : false;
+    if(ch.pies && !visibles(L,[27,28])){ h.hidden=false; h.textContent='🦶 ¡Que se vean los pies!'; }
+    else if(faltan){ h.hidden=false; h.textContent='👀 ¡Que se vea todo el cuerpo!'; } else h.hidden=true;
+    if(ch.mov){
+      if(!faltan){ const x = ch.mov, c = movCtx(P,m,performance.now()); let a=false, b=false;
+        try{ a = x.A(P,m,c,L); b = x.B(P,m,c,L); }catch(e){} avanzar(g, x.modo, a, b); ok = a || b; }
+      if(ch.mov.rastro) for(const i of [15,16,27,28]) if((L[i].visibility??1)>0.5){ const tr = g.trail[i] || (g.trail[i]=[]); tr.push({x:L[i].x, y:L[i].y}); if(tr.length>300) tr.shift(); }
+    } else { try{ ok = ch.ok(P,m,L); }catch(e){} }
   }
   g.ok = ok; g.left -= dt;
-  g.hold = ok ? g.hold+dt : Math.max(0, g.hold-dt*1.5);
-  $('#ring').style.setProperty('--p', Math.min(100, g.hold/D.hold*100));
-  $('#rTime').style.width = Math.max(0, g.left/D.time*100)+'%';
-  if(g.hold >= D.hold) terminarRonda(true); else if(g.left<=0) terminarRonda(false);
+  if(ch.mov) $('#ring').style.setProperty('--p', Math.min(100, g.cnt/ch.n*100));
+  else { g.hold = ok ? g.hold+dt : Math.max(0, g.hold-dt*1.5); $('#ring').style.setProperty('--p', Math.min(100, g.hold/D.hold*100)); }
+  $('#rTime').style.width = Math.max(0, g.left/g.tMax*100)+'%';
+  if(ch.mov ? g.cnt>=ch.n : g.hold>=D.hold) terminarRonda(true); else if(g.left<=0) terminarRonda(false);
 }
 function festejo(){ const W=cv.width, H=cv.height, cols=['#ff3b3b','#ffd60a','#1fb65e','#2f7bff','#ff4fb0','#9b5cff'];
   for(let i=0;i<70;i++) S.fx.push({x:W/2, y:H*0.45, vx:(Math.random()-0.5)*W*0.9, vy:-Math.random()*H*0.9, r:4+Math.random()*7, c:cols[i%6], life:1.6}); }
 
 // ---------- dibujo ----------
+// muñequito (modo sin imagen): cuerpo de colores y la cabeza es el emoji elegido en Máscaras
+function dibujarAvatar(L, ok){
+  const P=i=>{ const [x,y]=map(L[i].x,L[i].y); return {x,y}; }, v=i=>(L[i].visibility??1)>0.35;
+  const a=P(11), b=P(12), c=P(23), d=P(24), Ts=Math.max(30, Math.hypot((a.x+b.x-c.x-d.x)/2,(a.y+b.y-c.y-d.y)/2));
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const seg=(i,j,col,w)=>{ if(!v(i)||!v(j)) return; const A=P(i), B=P(j); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke(); };
+  const bola=(i,col,r)=>{ if(!v(i)) return; const A=P(i); ctx.beginPath(); ctx.arc(A.x,A.y,r,0,7); ctx.fillStyle=col; ctx.fill(); };
+  const pant='#2f7bff', piel='#ffc8a2', rem = ok ? '#21c46b' : '#ff4fb0';
+  seg(23,25,pant,Ts*0.32); seg(25,27,pant,Ts*0.27); seg(24,26,pant,Ts*0.32); seg(26,28,pant,Ts*0.27); bola(27,'#3a2a5a',Ts*0.17); bola(28,'#3a2a5a',Ts*0.17);
+  if(v(11)&&v(12)&&v(23)&&v(24)){ ctx.fillStyle=rem; ctx.strokeStyle=rem; ctx.lineWidth=Ts*0.28; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(d.x,d.y); ctx.lineTo(c.x,c.y); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  seg(11,13,rem,Ts*0.26); seg(12,14,rem,Ts*0.26); seg(13,15,piel,Ts*0.2); seg(14,16,piel,Ts*0.2); bola(15,piel,Ts*0.14); bola(16,piel,Ts*0.14);
+  if(v(0)){ const N=P(0); ctx.font=`${Math.round(Ts*0.95)}px ${EMOJI_FONT}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(caraDe(MASKS[S.mask]), N.x, N.y); }
+}
 const HUESOS = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,31],[28,32],[27,29],[28,30]];
 function map(nx, ny){ const f=S.fit; return [f.ox + (S.mirror?1-nx:nx)*f.dw, f.oy + ny*f.dh]; }
 function draw(t, dt){
@@ -539,12 +564,16 @@ function draw(t, dt){
   const vw=vid.videoWidth, vh=vid.videoHeight, sc=Math.min(W/vw, H/vh), dw=vw*sc, dh=vh*sc, ox=(W-dw)/2, oy=(H-dh)/2;
   S.fit = {ox,oy,dw,dh};
   ctx.save(); if(S.mirror){ ctx.translate(ox+dw,oy); ctx.scale(-1,1); ctx.drawImage(vid,0,0,dw,dh); } else ctx.drawImage(vid,ox,oy,dw,dh); ctx.restore();
+  const sinImagen = S.ocultar && (S.screen==='mascara' || (S.screen==='juego' && S.modo!=='cara'));
+  if(sinImagen){ const gr=ctx.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#7ad7ff'); gr.addColorStop(1,'#ffd1f0'); ctx.fillStyle=gr; ctx.fillRect(0,0,W,H); }
+  // rastro de los angelitos
+  const tr = S.screen==='juego' && S.g?.trail;
+  if(tr){ ctx.lineCap='round'; ctx.lineJoin='round';
+    for(const k in tr){ const pts=tr[k]; if(pts.length<2) continue;
+      for(const [w,col] of [[30,'rgba(255,255,255,.45)'],[12,'rgba(255,214,10,.95)']]){ ctx.lineWidth=w*dpr; ctx.strokeStyle=col; ctx.beginPath();
+        pts.forEach((p,i)=>{ const [x,y]=map(p.x,p.y); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); } } }
   // aros
   const objetivo = S.screen==='juego' && S.g?.phase==='reto' ? S.g.ch.aros : [];
-  if(S.screen==='mascara'){
-    if(S.ocultar){ const gr=ctx.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#7ad7ff'); gr.addColorStop(1,'#ffd1f0'); ctx.fillStyle=gr; ctx.fillRect(0,0,W,H); }
-    if(S.F){ dibujarMascara(ctx, suavizar(estadoCara(S.F)), MASKS[S.mask], t); }
-  }
   if(S.modo==='cuerpo') for(const a of S.hoops){ const [x,y]=map(a.cx,a.cy), C=COLORES[a.color], hot=objetivo.includes(a.color);
     const pul = hot ? 1+0.06*Math.sin(t/120) : 1;
     ctx.beginPath(); ctx.ellipse(x,y,a.rx*dw*1.05*pul,a.ry*dh*1.05*pul,0,0,Math.PI*2);
@@ -552,7 +581,8 @@ function draw(t, dt){
     ctx.lineWidth = (hot?9:5)*dpr; ctx.strokeStyle = C.css; ctx.stroke();
     if(S.screen==='calib' || hot){ ctx.font = `${28*dpr}px system-ui`; ctx.textAlign='center'; ctx.fillText(C.emoji, x, y-a.ry*dh-10*dpr); } }
   // esqueleto
-  if(S.L && S.screen!=='calib'){ const L=S.L, okc = S.g?.ok ? '#21c46b' : '#ffffff';
+  if(S.L && sinImagen && S.modo==='cuerpo') dibujarAvatar(S.L, !!S.g?.ok);
+  else if(S.L && S.screen!=='calib'){ const L=S.L, okc = S.g?.ok ? '#21c46b' : '#ffffff';
     ctx.lineCap='round'; ctx.lineWidth=7*dpr; ctx.strokeStyle = okc+'cc';
     for(const [a,b] of HUESOS){ if((L[a].visibility??1)<0.4 || (L[b].visibility??1)<0.4) continue;
       const [x1,y1]=map(L[a].x,L[a].y), [x2,y2]=map(L[b].x,L[b].y); ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
@@ -562,9 +592,11 @@ function draw(t, dt){
       ctx.beginPath(); ctx.arc(x,y,14*dpr,0,7); ctx.fillStyle='#2f7bff'; ctx.fill(); ctx.lineWidth=4*dpr; ctx.strokeStyle='#fff'; ctx.stroke(); } }
   if(S.F && S.modo==='cara'){ ctx.fillStyle = S.g?.ok ? '#21c46bdd' : '#ffffffaa'; const f=S.F.pts;
     for(let i=0;i<f.length;i+=3){ const [x,y]=map(f[i].x,f[i].y); ctx.fillRect(x-1.5*dpr,y-1.5*dpr,3*dpr,3*dpr); } }
-  if(DEBUG && S.F && S.modo==='cara'){ const B=S.F.bs, rows=[['ancho',B._ancho||0],['cheekPuff',bv(B,'cheekPuff')],['jawOpen',bv(B,'jawOpen')],['sonrisa',par(B,'mouthSmile')],['pucker',bv(B,'mouthPucker')],['browDown',par(B,'browDown')],['browUp',cejasArriba(B)],['frown',par(B,'mouthFrown')]];
-    ctx.font=`${14*dpr}px monospace`; ctx.textAlign='left'; ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(W-190*dpr,70*dpr,180*dpr,rows.length*18*dpr+10*dpr);
-    ctx.fillStyle='#fff'; rows.forEach(([n,v],i)=>ctx.fillText(n.padEnd(10)+v.toFixed(3), W-182*dpr, (88+i*18)*dpr)); }
+  if(DEBUG && S.F && S.modo!=='cuerpo'){ const B=S.F.bs, rows=[['ancho',B._ancho||0],['cheekPuff',bv(B,'cheekPuff')],['jawOpen',bv(B,'jawOpen')],['sonrisa',par(B,'mouthSmile')],['pucker',bv(B,'mouthPucker')],['browDown',par(B,'browDown')],['browUp',cejasArriba(B)],['frown',par(B,'mouthFrown')]];
+    ctx.font=`${14*dpr}px monospace`; ctx.textAlign='left'; ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(W-190*dpr,70*dpr,180*dpr,(rows.length+2)*18*dpr+10*dpr);
+    ctx.fillStyle='#fff'; rows.push(['det/s',S.fps||0],['errores',S.err]); rows.forEach(([n,v],i)=>ctx.fillText(n.padEnd(10)+(+v).toFixed(3), W-182*dpr, (88+i*18)*dpr)); }
+  if(S.F && (S.screen==='mascara' || (S.screen==='juego' && S.modo==='mascara'))) dibujarMascara(ctx, suavizar(estadoCara(S.F)), MASKS[S.mask], t);
+  dibujarChispas(ctx, dt);
   // papelitos
   S.fx = S.fx.filter(p=>(p.life-=dt)>0);
   for(const p of S.fx){ p.vy += H*1.4*dt; p.x += p.vx*dt; p.y += p.vy*dt; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.r*dpr,p.r*dpr*1.6); }
@@ -577,11 +609,19 @@ function loop(t){ requestAnimationFrame(loop); const dt = Math.min(0.1, (t-(lt||
     S.lastVT = vid.currentTime;
     try{ const r = S.lmCara.detectForVideo(vid, t), f = r.faceLandmarks && r.faceLandmarks[0];
       if(f && r.faceBlendshapes && r.faceBlendshapes[0]){ S.F = {pts:f, bs:Object.fromEntries(r.faceBlendshapes[0].categories.map(c=>[c.categoryName,c.score]))}; S.F.bs._ancho = anchoCachetes(f); S.lastPose = t; }
-      else if(t-S.lastPose>500) S.F = null; }catch(e){} }
+      else if(t-S.lastPose>500) S.F = null; S.lastProc = t; S.detN=(S.detN||0)+1; }catch(e){ S.err++; } }
   else if(S.modo==='cuerpo' && S.lm && vid.readyState>=2 && S.screen!=='inicio' && S.screen!=='fin' && vid.currentTime!==S.lastVT){
     S.lastVT = vid.currentTime;
     try{ const r = S.lm.detectForVideo(vid, t), L = r.landmarks && r.landmarks[0];
-      if(L){ S.L = L; S.lastPose = t; } else if(t-S.lastPose>500) S.L = null; }catch(e){} }
+      if(L){ S.L = L; S.lastPose = t; } else if(t-S.lastPose>500) S.L = null; S.lastProc = t; S.detN=(S.detN||0)+1; }catch(e){ S.err++; } }
+  // vigilante: si la cámara o el detector se trabaron, se recuperan solos (y nunca queda una cara/pose vieja congelada)
+  if(['juego','mascara','calib'].includes(S.screen) && (S.lm || S.lmCara)){
+    if(t-S.lastPose>900){ S.F = null; S.L = null; }
+    if(!S.lastProc) S.lastProc = t;
+    if(t-S.lastProc>2500 && t-(S.rescT||0)>4000){ S.rescT = t; rescatar(); }
+    if(S.err>20){ S.err = 0; S.cpu = true; if(S.modo==='cuerpo') S.lm = null; else S.lmCara = null; cargarDetector().catch(()=>{}); }
+  }
+  if(t-(S.fpsT||0)>1000){ S.fps = S.detN||0; S.detN = 0; S.fpsT = t; }
   if(S.screen==='calib' && vid.videoWidth && !S.manual && t-S.scanT>700){ S.scanT=t;
     try{ S.hoops = detectarAros(foto()); pintarAros(); }catch(e){} }
   if(S.screen==='juego') tick(dt);
@@ -592,7 +632,9 @@ requestAnimationFrame(loop);
 
 // ---------- eventos ----------
 $('#masks').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) elegirMask(+b.dataset.i); });
-$('#bOcultar').onclick = ()=>{ S.ocultar=!S.ocultar; $('#bOcultar').textContent = S.ocultar ? '📷' : '🙈'; };
+$('#bOcultar').onclick = ()=>ponerOcultar(!S.ocultar);
+$('#bOcuOn').onclick = ()=>ponerOcultar(!S.ocultar);
+$('#bJugarM').onclick = empezarJuego;
 addEventListener('keydown', e=>{ if(S.screen!=='mascara') return; if(e.key==='ArrowRight'){ elegirMask(S.mask+1); e.preventDefault(); } if(e.key==='ArrowLeft'){ elegirMask(S.mask-1); e.preventDefault(); } });
 $('#bArosOn').onclick = ()=>{ S.aros=!S.aros; pintarDifs(); try{localStorage.setItem('movete-aros',S.aros?'1':'0');}catch(e){} };
 document.querySelectorAll('#modos button').forEach(b=>b.onclick=()=>{ S.modo=b.dataset.m; pintarDifs(); try{localStorage.setItem('movete-modo',S.modo);}catch(e){} });
@@ -613,7 +655,7 @@ $('#bStart').onclick = async ()=>{
 $('#bScan').onclick = ()=>{ S.manual=false; S.scanT=0; $('#calibMsg').textContent='Buscando… salí un ratito de la imagen 👀'; };
 $('#bPlay').onclick = empezarJuego;
 $('#bAgain').onclick = empezarJuego;
-$('#bAros').onclick = ()=>mostrar('calib');
+$('#bAros').onclick = ()=>mostrar(S.modo==='mascara' ? 'mascara' : 'calib');
 $('#bInicio').onclick = $('#bHome').onclick = ()=>{ S.g=null; mostrar('inicio'); try{speechSynthesis.cancel();}catch(e){} };
 $('#bCam').onclick = async ()=>{ S.facing = S.facing==='user' ? 'environment' : 'user';
   try{ await prenderCamara(); S.manual=false; S.scanT=0; }catch(e){ S.facing = S.facing==='user' ? 'environment' : 'user'; } };
@@ -641,7 +683,7 @@ cv.addEventListener('pointerdown', e=>{
 if(hub) $('#bHub').hidden = false;
 pintarDifs(); pintarSnd();
 if('speechSynthesis' in window) speechSynthesis.getVoices();
-window.__movete = {detectarAros, aroDesdeToque, foto, mostrar, pintarAros, empezarJuego, S, EXPR}; // para pruebas
+window.__movete = {detectarAros, aroDesdeToque, foto, mostrar, pintarAros, empezarJuego, S, EXPR, MOVS, MASKS}; // para pruebas
 }
 </script>
 </body>
