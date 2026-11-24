@@ -5,12 +5,11 @@
   "color": "#7b3cff",
   "group": "Movimiento",
   "order": 60,
-  "desc": "Poses, aros de colores y caras con la cámara: ¡a mover el cuerpo!",
-  "tags": ["📷 Usa la cámara", "⭕ Aros de colores", "😜 Caras"],
-  "url": "https://movete.vercel.app",
+  "desc": "Poses y caras con la cámara (y aros de colores opcionales): ¡a mover el cuerpo!",
+  "tags": ["📷 Usa la cámara", "🤸 Poses", "😜 Caras"],
+  "url": "https://movete-nine.vercel.app",
   "players": { "min": 1, "max": 1 },
   "tv": "/?hub={code}",
   "solo": "/",
-  "needsInternet": true,
-  "hidden": true
+  "needsInternet": true
 }
