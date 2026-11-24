@@ -37,6 +37,7 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 .difs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 18px}
 .difs button{border-radius:22px;padding:10px 4px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:17px}
 .difs button b{font-size:38px;line-height:1.1}
+#modos{grid-template-columns:repeat(2,minmax(0,1fr))}
 .difs button small{font-weight:500;opacity:.7;font-size:13px}
 .difs button.sel{background:#ffd60a;transform:scale(1.05)}
 .tips{background:rgba(255,255,255,.1);border-radius:20px;padding:12px 16px;margin:18px 0 0;text-align:left;font-size:16px}
@@ -62,6 +63,9 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 #centro{position:fixed;inset:0;display:grid;place-items:center;z-index:6;pointer-events:none;text-align:center}
 #centro div{font-size:clamp(70px,22vw,200px);font-weight:800;text-shadow:0 6px 0 rgba(0,0,0,.35);line-height:1}
 #centro p{font-size:clamp(24px,5vw,44px);font-weight:800;margin:0;background:rgba(28,18,71,.8);padding:8px 22px;border-radius:20px}
+#espejo{position:fixed;left:14px;bottom:max(14px,env(safe-area-inset-bottom));z-index:6;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:52px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.meter{height:16px;border-radius:9px;background:#eee;margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff4fb0,#21c46b);border-radius:9px;transition:width .1s}
 #hint{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:6;
   background:var(--warn);color:var(--ink);font-weight:800;padding:8px 20px;border-radius:22px;font-size:20px;text-align:center;width:max-content;max-width:calc(100vw - 24px)}
 .stars{font-size:46px;margin:6px 0 2px}
@@ -87,7 +91,11 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 <section id="inicio" class="panel">
   <div class="box">
     <h1>Movete <span>🤸</span></h1>
-    <p class="sub">Poses y aros de colores con la cámara</p>
+    <p class="sub">Poses, aros y caras con la cámara</p>
+    <div class="difs" id="modos">
+      <button data-m="cuerpo"><b>🤸</b>Cuerpo<small>poses y aros</small></button>
+      <button data-m="cara"><b>😜</b>Caras<small>expresiones</small></button>
+    </div>
     <div class="difs" id="difs">
       <button data-d="facil"><b>🐣</b>Fácil<small>poses simples</small></button>
       <button data-d="medio"><b>🦊</b>Medio<small>un pie, estrella…</small></button>
@@ -99,6 +107,7 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
     <ul class="tips">
       <li>📱 Apoyá el celu parado, lejos (2–3 m), que se vea <b>todo el cuerpo y la alfombra</b>.</li>
       <li>⭕ Poné los aros de colores sobre la alfombra. Si no tenés aros, igual se juega con poses.</li>
+      <li>😜 <b>Caras:</b> el celu más cerca, a la altura de la cara.</li>
       <li>💡 Mejor con buena luz y sin otras personas en la imagen.</li>
     </ul>
   </div>
@@ -115,10 +124,11 @@ h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
 
 <div id="juegoHud" class="hud" hidden>
   <div class="reto" id="reto"><div class="ring" id="ring"><b id="rEmoji">🙌</b></div>
-    <div style="flex:1"><p id="rText">¡Manos arriba!</p><div class="time"><i id="rTime"></i></div></div></div>
+    <div style="flex:1"><p id="rText">¡Manos arriba!</p><div class="meter" id="rMeterBox" hidden><i id="rMeter"></i></div><div class="time"><i id="rTime"></i></div></div></div>
 </div>
 <div id="centro" hidden><div id="cBig"></div></div>
 <div id="hint" hidden></div>
+<div id="espejo" hidden></div>
 
 <section id="fin" class="panel" hidden>
   <div class="box">
@@ -140,6 +150,7 @@ const $ = s => document.querySelector(s);
 const cv = $('#cv'), ctx = cv.getContext('2d'), vid = $('#vid');
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+const MODEL_CARA = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 const qs = new URLSearchParams(location.search);
 const hub = qs.get('hub');
 
@@ -208,13 +219,13 @@ function aroDesdeToque(img, nx, ny){
 
 // ---------- estado ----------
 const S = { screen:'inicio', facing:'user', stream:null, lm:null, L:null, lastPose:0, lastVT:-1, hoops:[], manual:false,
-  diff:'facil', sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
-try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; }catch(e){}
+  diff:'facil', modo:'cuerpo', F:null, lmCara:null, sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
+try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; S.modo = localStorage.getItem('movete-modo') || 'cuerpo'; }catch(e){}
 
 const DIF = {
-  facil:  {hold:0.8, time:15, total:8,  pool:['manosArriba','avion','agachate','cabeza'], aro:['dentro','dentro','manoEn']},
-  medio:  {hold:1.2, time:10, total:10, pool:['manosArriba','avion','agachate','cabeza','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','combo']},
-  dificil:{hold:1.6, time:7,  total:12, pool:['avion','agachate','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','twister','twister','combo']},
+  facil:  {hold:0.8, time:15, total:8,  cara:['sonrisa','boca','ojos','trompita','cachetes'], pool:['manosArriba','avion','agachate','cabeza'], aro:['dentro','dentro','manoEn']},
+  medio:  {hold:1.2, time:10, total:10, cara:['sonrisa','boca','ojos','trompita','cachetes','sorpresa','enojo','cejas'], pool:['manosArriba','avion','agachate','cabeza','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','combo']},
+  dificil:{hold:1.6, time:7,  total:12, cara:['sorpresa','enojo','cejas','guino','triste','trompita','cachetes','ojos'], pool:['avion','agachate','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','twister','twister','combo']},
 };
 
 // ---------- poses (P en píxeles de la cámara, m = medidas del cuerpo) ----------
@@ -232,6 +243,21 @@ const POSES = {
   manoDer:    {t:'Levantá la mano <u>derecha</u>', e:'✋', ids:[0,11,12,15,16], ok:(P,m)=>P[16].y<P[0].y && P[15].y>m.sh.y},
   manoIzq:    {t:'Levantá la mano <u>izquierda</u>', e:'🤚', ids:[0,11,12,15,16], ok:(P,m)=>P[15].y<P[0].y && P[16].y>m.sh.y},
 };
+// ---------- caras (blendshapes de MediaPipe, 0..1) ----------
+const bv = (B,n) => B[n] || 0, par = (B,n) => (bv(B,n+'Left')+bv(B,n+'Right'))/2;
+const cejasArriba = B => Math.max(bv(B,'browInnerUp'), par(B,'browOuterUp'));
+const EXPR = {
+  sonrisa: {t:'¡Una sonrisa bien grande!', e:'😄', th:0.55, v:B=>par(B,'mouthSmile')},
+  boca:    {t:'¡Abrí grande la boca!',      e:'😮', th:0.5,  v:B=>bv(B,'jawOpen')},
+  ojos:    {t:'Cerrá los ojitos',           e:'😌', th:0.55, v:B=>Math.min(bv(B,'eyeBlinkLeft'),bv(B,'eyeBlinkRight'))},
+  trompita:{t:'¡Hacé trompita de beso!',    e:'😘', th:0.6,  v:B=>bv(B,'mouthPucker')},
+  cachetes:{t:'¡Inflá los cachetes!',       e:'🐡', th:0.3,  v:B=>bv(B,'cheekPuff')},
+  sorpresa:{t:'¡Cara de sorpresa!',         e:'😲', th:1,    v:B=>Math.min(bv(B,'jawOpen')/0.35, cejasArriba(B)/0.4)},
+  enojo:   {t:'¡Cara de enojado!',          e:'😠', th:0.45, v:B=>par(B,'browDown')},
+  cejas:   {t:'Levantá las cejas',          e:'🤨', th:0.55, v:cejasArriba},
+  guino:   {t:'¡Guiñá un ojo!',             e:'😉', th:0.45, v:B=>Math.abs(bv(B,'eyeBlinkLeft')-bv(B,'eyeBlinkRight'))},
+  triste:  {t:'Cara de triste',             e:'😢', th:1,    v:B=>Math.min(par(B,'mouthFrown')/0.25, bv(B,'browInnerUp')/0.3)},
+};
 const visibles = (L,ids) => ids.every(i => L[i] && (L[i].visibility ?? 1) > 0.5);
 function pix(L){ const w=vid.videoWidth||1, h=vid.videoHeight||1; return L.map(p=>({x:p.x*w, y:p.y*h})); }
 function medidas(P){ const sh=mid(P[11],P[12]), hp=mid(P[23],P[24]); return {sh, hp, T:Math.max(dist(sh,hp),1)}; }
@@ -242,6 +268,8 @@ const enColor = (p,c,s) => S.hoops.some(a => a.color===c && enAro(p,a,s));
 const tag = c => `<span class="c" style="background:${COLORES[c].css}">${COLORES[c].nombre}</span>`;
 
 function crearReto(){
+  if(S.modo==='cara'){ const pool = DIF[S.diff].cara.filter(k=>k!==S.g.lastKey), k = pool[Math.floor(Math.random()*pool.length)], x = EXPR[k];
+    return {key:k, t:x.t, e:x.e, voz:x.t, aros:[], cara:true, v:x.v, th:x.th}; }
   const D = DIF[S.diff], cols = [...new Set(S.hoops.map(a=>a.color))], g = S.g, ops = [];
   for(const k of D.pool){ const p = POSES[k];
     ops.push({key:k, t:p.t, e:p.e, voz:p.t, aros:[], pies:p.ids.some(i=>PIES.includes(i)), ok:(P,m,L)=>visibles(L,p.ids) && p.ok(P,m)}); }
@@ -281,12 +309,16 @@ function decir(txt){ if(!S.sound || !('speechSynthesis' in window)) return;
 
 // ---------- cámara y detector ----------
 async function cargarDetector(){
-  if(S.lm) return;
+  if(S.modo==='cara' ? S.lmCara : S.lm) return;
   const mod = await import(MP + '/vision_bundle.mjs');
   const {FilesetResolver, PoseLandmarker} = mod.FilesetResolver ? mod : mod.default;
   const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
   const opts = d => ({baseOptions:{modelAssetPath:MODEL, delegate:d}, runningMode:'VIDEO', numPoses:1,
     minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5});
+  if(S.modo==='cara'){ const {FaceLandmarker} = mod.FaceLandmarker ? mod : mod.default;
+    const fo = d => ({baseOptions:{modelAssetPath:MODEL_CARA, delegate:d}, runningMode:'VIDEO', numFaces:1, outputFaceBlendshapes:true});
+    try{ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo('GPU')); } catch(e){ S.lmCara = await FaceLandmarker.createFromOptions(fs, fo('CPU')); }
+    return; }
   try{ S.lm = await PoseLandmarker.createFromOptions(fs, opts('GPU')); }
   catch(e){ S.lm = await PoseLandmarker.createFromOptions(fs, opts('CPU')); }
 }
@@ -309,11 +341,13 @@ function foto(){ const W=200, H=Math.round(200*(vid.videoHeight||540)/(vid.video
 function mostrar(sc){ S.screen = sc;
   $('#inicio').hidden = sc!=='inicio'; $('#fin').hidden = sc!=='fin';
   $('#calibHud').hidden = sc!=='calib'; $('#juegoHud').hidden = true; $('#score').hidden = sc!=='juego';
-  $('#centro').hidden = true; $('#hint').hidden = true;
+  $('#centro').hidden = true; $('#hint').hidden = true; $('#espejo').hidden = !(sc==='juego' && S.modo==='cara');
   $('#bHome').hidden = sc==='inicio'; $('#bCam').hidden = sc!=='calib';
   if(sc==='calib'){ S.manual=false; S.scanT=0; }
 }
-function pintarDifs(){ document.querySelectorAll('#difs button').forEach(b=>b.classList.toggle('sel', b.dataset.d===S.diff)); }
+const DLAB = {cuerpo:['poses simples','un pie, estrella…','twister de aros'], cara:['sonrisa, boca…','sorpresa, enojo…','guiño, triste…']};
+function pintarDifs(){ document.querySelectorAll('#difs button').forEach((b,i)=>{ b.classList.toggle('sel', b.dataset.d===S.diff); b.querySelector('small').textContent = DLAB[S.modo][i]; });
+  document.querySelectorAll('#modos button').forEach(b=>b.classList.toggle('sel', b.dataset.m===S.modo)); }
 function pintarSnd(){ $('#bSnd').textContent = S.sound ? '🔊' : '🔇'; }
 function centro(html){ const c=$('#centro'); c.hidden=!html; $('#cBig').innerHTML = html||''; }
 
@@ -334,7 +368,7 @@ function nuevaRonda(){ const g=S.g, D=DIF[S.diff];
   g.round++; g.ch = crearReto(); g.lastKey = g.ch.key; g.hold = 0; g.left = D.time; g.phase = 'reto';
   centro(''); $('#juegoHud').hidden = false; $('#sRonda').textContent = `${g.round}/${g.total}`;
   const r = $('#reto'); r.style.animation='none'; r.offsetHeight; r.style.animation='';
-  $('#rEmoji').textContent = g.ch.e; $('#rText').innerHTML = g.ch.t;
+  $('#rEmoji').textContent = g.ch.e; $('#rText').innerHTML = g.ch.t; $('#rMeterBox').hidden = !g.ch.cara; $('#rMeter').style.width = '0';
   decir(g.ch.voz);
 }
 function terminarRonda(bien){ const g=S.g, D=DIF[S.diff];
@@ -350,8 +384,9 @@ function fin(){ const g=S.g, max=g.total*3; mostrar('fin');
   const n = Math.round(g.stars/max*5);
   $('#fStars').textContent = '⭐'.repeat(Math.max(1,n)) + '☆'.repeat(5-Math.max(1,n));
   $('#fText').textContent = `Juntaste ${g.stars} estrellas de ${max}`;
-  let rec = 0; try{ rec = +localStorage.getItem('movete-rec-'+S.diff) || 0; }catch(e){}
-  if(g.stars > rec){ try{ localStorage.setItem('movete-rec-'+S.diff, g.stars); }catch(e){}
+  const rk = 'movete-rec-'+(S.modo==='cara'?'cara-':'')+S.diff; $('#bAros').hidden = S.modo==='cara';
+  let rec = 0; try{ rec = +localStorage.getItem(rk) || 0; }catch(e){}
+  if(g.stars > rec){ try{ localStorage.setItem(rk, g.stars); }catch(e){}
     $('#fRec').textContent = '🏆 ¡Nuevo récord!'; decir(`¡Nuevo récord! ${g.stars} estrellas`); festejo(); festejo(); }
   else { $('#fRec').textContent = `Récord: ${rec} ⭐`; decir(`¡Terminaste! Juntaste ${g.stars} estrellas`); }
 }
@@ -361,14 +396,22 @@ function tick(dt){ const g=S.g; if(!g) return;
     if(g.cd <= -0.4) nuevaRonda(); return; }
   if(g.phase==='pausa'){ g.wait -= dt; if(g.wait<=0){ g.round>=g.total ? fin() : nuevaRonda(); } return; }
   if(g.phase!=='reto') return;
-  const h = $('#hint');
+  const h = $('#hint'), D = DIF[S.diff];
+  let ok = false;
+  if(g.ch.cara){
+    if(!S.F){ h.hidden=false; h.textContent='👀 ¡No veo tu carita! Acercate a la cámara'; return; }
+    h.hidden = true; const v = g.ch.v(S.F.bs); ok = v >= g.ch.th;
+    $('#rMeter').style.width = Math.min(100, v/g.ch.th*100)+'%';
+    let best='🙂', bl=0.8; for(const k in EXPR){ const x=EXPR[k], l=x.v(S.F.bs)/x.th; if(l>bl){ bl=l; best=x.e; } }
+    $('#espejo').textContent = best;
+  } else {
   if(!S.L){ h.hidden=false; h.textContent='👀 ¡No te veo! Ponete frente a la cámara'; return; } // pausa el tiempo
   const L = S.L, P = pix(L), m = medidas(P);
   if(g.ch.pies && !visibles(L,[27,28])){ h.hidden=false; h.textContent='🦶 ¡Que se vean los pies!'; } else h.hidden=true;
-  let ok=false; try{ ok = g.ch.ok(P,m,L); }catch(e){}
+  try{ ok = g.ch.ok(P,m,L); }catch(e){}
+  }
   g.ok = ok; g.left -= dt;
   g.hold = ok ? g.hold+dt : Math.max(0, g.hold-dt*1.5);
-  const D = DIF[S.diff];
   $('#ring').style.setProperty('--p', Math.min(100, g.hold/D.hold*100));
   $('#rTime').style.width = Math.max(0, g.left/D.time*100)+'%';
   if(g.hold >= D.hold) terminarRonda(true); else if(g.left<=0) terminarRonda(false);
@@ -389,7 +432,7 @@ function draw(t, dt){
   ctx.save(); if(S.mirror){ ctx.translate(ox+dw,oy); ctx.scale(-1,1); ctx.drawImage(vid,0,0,dw,dh); } else ctx.drawImage(vid,ox,oy,dw,dh); ctx.restore();
   // aros
   const objetivo = S.screen==='juego' && S.g?.phase==='reto' ? S.g.ch.aros : [];
-  for(const a of S.hoops){ const [x,y]=map(a.cx,a.cy), C=COLORES[a.color], hot=objetivo.includes(a.color);
+  if(S.modo!=='cara') for(const a of S.hoops){ const [x,y]=map(a.cx,a.cy), C=COLORES[a.color], hot=objetivo.includes(a.color);
     const pul = hot ? 1+0.06*Math.sin(t/120) : 1;
     ctx.beginPath(); ctx.ellipse(x,y,a.rx*dw*1.05*pul,a.ry*dh*1.05*pul,0,0,Math.PI*2);
     if(hot){ ctx.fillStyle = C.css+'40'; ctx.fill(); ctx.lineWidth = 16*dpr; ctx.strokeStyle = '#fff'; ctx.stroke(); }
@@ -404,6 +447,8 @@ function draw(t, dt){
       ctx.beginPath(); ctx.arc(x,y,11*dpr,0,7); ctx.fillStyle=c; ctx.fill(); }
     for(const lado of [0,1]){ const p=pie(L,lado); if((L[lado?28:27].visibility??1)<0.4) continue; const [x,y]=map(p.x,p.y);
       ctx.beginPath(); ctx.arc(x,y,14*dpr,0,7); ctx.fillStyle='#2f7bff'; ctx.fill(); ctx.lineWidth=4*dpr; ctx.strokeStyle='#fff'; ctx.stroke(); } }
+  if(S.F && S.modo==='cara'){ ctx.fillStyle = S.g?.ok ? '#21c46bdd' : '#ffffffaa'; const f=S.F.pts;
+    for(let i=0;i<f.length;i+=3){ const [x,y]=map(f[i].x,f[i].y); ctx.fillRect(x-1.5*dpr,y-1.5*dpr,3*dpr,3*dpr); } }
   // papelitos
   S.fx = S.fx.filter(p=>(p.life-=dt)>0);
   for(const p of S.fx){ p.vy += H*1.4*dt; p.x += p.vx*dt; p.y += p.vy*dt; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.r*dpr,p.r*dpr*1.6); }
@@ -412,7 +457,12 @@ function draw(t, dt){
 // ---------- bucle ----------
 let lt = 0;
 function loop(t){ requestAnimationFrame(loop); const dt = Math.min(0.1, (t-(lt||t))/1000); lt = t;
-  if(S.lm && vid.readyState>=2 && S.screen!=='inicio' && S.screen!=='fin' && vid.currentTime!==S.lastVT){
+  if(S.modo==='cara' && S.lmCara && vid.readyState>=2 && S.screen==='juego' && vid.currentTime!==S.lastVT){
+    S.lastVT = vid.currentTime;
+    try{ const r = S.lmCara.detectForVideo(vid, t), f = r.faceLandmarks && r.faceLandmarks[0];
+      if(f && r.faceBlendshapes && r.faceBlendshapes[0]){ S.F = {pts:f, bs:Object.fromEntries(r.faceBlendshapes[0].categories.map(c=>[c.categoryName,c.score]))}; S.lastPose = t; }
+      else if(t-S.lastPose>500) S.F = null; }catch(e){} }
+  else if(S.modo!=='cara' && S.lm && vid.readyState>=2 && S.screen!=='inicio' && S.screen!=='fin' && vid.currentTime!==S.lastVT){
     S.lastVT = vid.currentTime;
     try{ const r = S.lm.detectForVideo(vid, t), L = r.landmarks && r.landmarks[0];
       if(L){ S.L = L; S.lastPose = t; } else if(t-S.lastPose>500) S.L = null; }catch(e){} }
@@ -424,14 +474,16 @@ function loop(t){ requestAnimationFrame(loop); const dt = Math.min(0.1, (t-(lt||
 requestAnimationFrame(loop);
 
 // ---------- eventos ----------
+document.querySelectorAll('#modos button').forEach(b=>b.onclick=()=>{ S.modo=b.dataset.m; pintarDifs(); try{localStorage.setItem('movete-modo',S.modo);}catch(e){} });
 document.querySelectorAll('#difs button').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; pintarDifs(); try{localStorage.setItem('movete-dif',S.diff);}catch(e){} });
 $('#bStart').onclick = async ()=>{
   const b = $('#bStart'), err = $('#err'); err.hidden = true; b.disabled = true;
   beep(660,0.05); decir('¡Vamos a movernos!'); despierto();
   try{
+    if(S.modo==='cara') S.facing = 'user';
     b.textContent = '📷 Prendiendo la cámara…'; await prenderCamara();
     b.textContent = '🧠 Cargando el detector…'; await cargarDetector();
-    mostrar('calib'); pintarAros();
+    if(S.modo==='cara') empezarJuego(); else { mostrar('calib'); pintarAros(); }
   }catch(e){ err.hidden=false;
     err.textContent = e && e.name==='NotAllowedError' ? 'Necesito permiso para usar la cámara 📷. Habilitalo en el navegador y probá de nuevo.'
       : 'No pude arrancar: ' + (e && e.message || e) + ' (¿hay internet?)'; }
@@ -468,7 +520,7 @@ cv.addEventListener('pointerdown', e=>{
 if(hub) $('#bHub').hidden = false;
 pintarDifs(); pintarSnd();
 if('speechSynthesis' in window) speechSynthesis.getVoices();
-window.__movete = {detectarAros, aroDesdeToque, foto, mostrar, pintarAros, empezarJuego, S}; // para pruebas
+window.__movete = {detectarAros, aroDesdeToque, foto, mostrar, pintarAros, empezarJuego, S, EXPR}; // para pruebas
 }
 </script>
 </body>
