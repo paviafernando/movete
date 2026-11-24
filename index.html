@@ -155,7 +155,7 @@ const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 const MODEL_CARA = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 const qs = new URLSearchParams(location.search);
-const hub = qs.get('hub');
+const hub = qs.get('hub'), DEBUG = qs.has('debug');
 
 // ---------- colores de aros ----------
 const COLORES = [
@@ -247,6 +247,13 @@ const POSES = {
   manoIzq:    {t:'Levantá la mano <u>izquierda</u>', e:'🤚', ids:[0,11,12,15,16], ok:(P,m)=>P[15].y<P[0].y && P[16].y>m.sh.y},
 };
 // ---------- caras (blendshapes de MediaPipe, 0..1) ----------
+// Cachetes inflados: ancho de la parte baja de la cara (contorno a la altura de la boca) / ancho a la altura de los pómulos,
+// comparado con una línea base personal que se adapta sola (baja rápido, sube muy lento).
+let baseCach = 0;
+function anchoCachetes(f){ const w=vid.videoWidth||1, h=vid.videoHeight||1, d=(a,b)=>Math.hypot((f[a].x-f[b].x)*w,(f[a].y-f[b].y)*h);
+  const r = (d(58,288)+d(132,361)) / (2*d(234,454));
+  if(!baseCach || r<baseCach) baseCach = baseCach ? baseCach*0.7 + r*0.3 : r; else baseCach += (r-baseCach)*0.001;
+  return Math.max(0, r/baseCach - 1); }
 const bv = (B,n) => B[n] || 0, par = (B,n) => (bv(B,n+'Left')+bv(B,n+'Right'))/2;
 const cejasArriba = B => Math.max(bv(B,'browInnerUp'), par(B,'browOuterUp'));
 const EXPR = {
@@ -254,7 +261,7 @@ const EXPR = {
   boca:    {t:'¡Abrí grande la boca!',      e:'😮', th:0.5,  v:B=>bv(B,'jawOpen')},
   ojos:    {t:'Cerrá los ojitos',           e:'😌', th:0.55, v:B=>Math.min(bv(B,'eyeBlinkLeft'),bv(B,'eyeBlinkRight'))},
   trompita:{t:'¡Hacé trompita de beso!',    e:'😘', th:0.6,  v:B=>bv(B,'mouthPucker')},
-  cachetes:{t:'¡Inflá los cachetes!',       e:'🐡', th:0.3,  v:B=>bv(B,'cheekPuff')},
+  cachetes:{t:'¡Inflá los cachetes!',       e:'🐡', th:1,    v:B=>(bv(B,'jawOpen')>0.25 || par(B,'mouthSmile')>0.4) ? 0 : Math.max(bv(B,'cheekPuff')/0.15, (B._ancho||0)/0.04)},
   sorpresa:{t:'¡Cara de sorpresa!',         e:'😲', th:1,    v:B=>Math.min(bv(B,'jawOpen')/0.35, cejasArriba(B)/0.4)},
   enojo:   {t:'¡Cara de enojado!',          e:'😠', th:0.45, v:B=>par(B,'browDown')},
   cejas:   {t:'Levantá las cejas',          e:'🤨', th:0.55, v:cejasArriba},
@@ -453,6 +460,9 @@ function draw(t, dt){
       ctx.beginPath(); ctx.arc(x,y,14*dpr,0,7); ctx.fillStyle='#2f7bff'; ctx.fill(); ctx.lineWidth=4*dpr; ctx.strokeStyle='#fff'; ctx.stroke(); } }
   if(S.F && S.modo==='cara'){ ctx.fillStyle = S.g?.ok ? '#21c46bdd' : '#ffffffaa'; const f=S.F.pts;
     for(let i=0;i<f.length;i+=3){ const [x,y]=map(f[i].x,f[i].y); ctx.fillRect(x-1.5*dpr,y-1.5*dpr,3*dpr,3*dpr); } }
+  if(DEBUG && S.F && S.modo==='cara'){ const B=S.F.bs, rows=[['ancho',B._ancho||0],['cheekPuff',bv(B,'cheekPuff')],['jawOpen',bv(B,'jawOpen')],['sonrisa',par(B,'mouthSmile')],['pucker',bv(B,'mouthPucker')],['browDown',par(B,'browDown')],['browUp',cejasArriba(B)],['frown',par(B,'mouthFrown')]];
+    ctx.font=`${14*dpr}px monospace`; ctx.textAlign='left'; ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(W-190*dpr,70*dpr,180*dpr,rows.length*18*dpr+10*dpr);
+    ctx.fillStyle='#fff'; rows.forEach(([n,v],i)=>ctx.fillText(n.padEnd(10)+v.toFixed(3), W-182*dpr, (88+i*18)*dpr)); }
   // papelitos
   S.fx = S.fx.filter(p=>(p.life-=dt)>0);
   for(const p of S.fx){ p.vy += H*1.4*dt; p.x += p.vx*dt; p.y += p.vy*dt; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.r*dpr,p.r*dpr*1.6); }
@@ -464,7 +474,7 @@ function loop(t){ requestAnimationFrame(loop); const dt = Math.min(0.1, (t-(lt||
   if(S.modo==='cara' && S.lmCara && vid.readyState>=2 && S.screen==='juego' && vid.currentTime!==S.lastVT){
     S.lastVT = vid.currentTime;
     try{ const r = S.lmCara.detectForVideo(vid, t), f = r.faceLandmarks && r.faceLandmarks[0];
-      if(f && r.faceBlendshapes && r.faceBlendshapes[0]){ S.F = {pts:f, bs:Object.fromEntries(r.faceBlendshapes[0].categories.map(c=>[c.categoryName,c.score]))}; S.lastPose = t; }
+      if(f && r.faceBlendshapes && r.faceBlendshapes[0]){ S.F = {pts:f, bs:Object.fromEntries(r.faceBlendshapes[0].categories.map(c=>[c.categoryName,c.score]))}; S.F.bs._ancho = anchoCachetes(f); S.lastPose = t; }
       else if(t-S.lastPose>500) S.F = null; }catch(e){} }
   else if(S.modo!=='cara' && S.lm && vid.readyState>=2 && S.screen!=='inicio' && S.screen!=='fin' && vid.currentTime!==S.lastVT){
     S.lastVT = vid.currentTime;
