@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1c1247">
+<title>Movete · Poses y aros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+/* POC: juego de movimiento con la cámara. Pantalla = escenario oscuro con la imagen
+   de la cámara, aros dibujados encima y una tarjeta grande con el reto. */
+:root{--bg:#1c1247;--card:#fff;--ink:#1d1640;--acc:#ff5fa2;--ok:#21c46b;--warn:#ffb020}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:#fff;
+  font:18px/1.3 "Baloo 2",system-ui,sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+#vid{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none}
+button{font:inherit;font-weight:700;border:0;border-radius:999px;cursor:pointer;color:var(--ink);background:#fff;
+  min-height:48px;padding:8px 20px;box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .1s}
+button:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+button:focus-visible{outline:5px solid #ffd60a;outline-offset:3px}
+button:disabled{opacity:.45}
+.big{font-size:24px;min-height:60px;padding:10px 28px}
+.go{background:var(--ok);color:#fff}
+#top{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;z-index:20;pointer-events:none}
+#top button{pointer-events:auto;width:52px;height:52px;padding:0;font-size:24px;background:rgba(255,255,255,.92)}
+#top .sp{flex:1}
+.panel{position:fixed;inset:0;display:grid;place-items:center;padding:80px 16px 24px;z-index:10;
+  background:radial-gradient(circle at 50% 20%,#4b2bb3 0,#1c1247 70%);overflow:auto}
+.panel[hidden],.hud[hidden],[hidden]{display:none!important}
+.box{width:min(560px,100%);text-align:center}
+h1{font-size:clamp(44px,11vw,76px);line-height:1;margin:0 0 4px;font-weight:800;letter-spacing:.5px}
+h1 span{display:inline-block;animation:bota 1.4s ease-in-out infinite}
+@keyframes bota{50%{transform:translateY(-10px) rotate(-8deg)}}
+.sub{opacity:.85;margin:0 0 22px}
+.difs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.difs button{border-radius:22px;padding:10px 4px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:17px}
+.difs button b{font-size:38px;line-height:1.1}
+.difs button small{font-weight:500;opacity:.7;font-size:13px}
+.difs button.sel{background:#ffd60a;transform:scale(1.05)}
+.tips{background:rgba(255,255,255,.1);border-radius:20px;padding:12px 16px;margin:18px 0 0;text-align:left;font-size:16px}
+.tips li{margin:4px 0}
+.hud{position:fixed;left:0;right:0;z-index:5;pointer-events:none;display:flex;justify-content:center;padding:0 12px}
+#calibHud{bottom:max(12px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;gap:10px}
+#calibHud .msg{background:rgba(28,18,71,.88);border-radius:20px;padding:10px 16px;max-width:620px;text-align:center;font-size:17px}
+#calibHud .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;pointer-events:auto}
+#found{font-size:30px;letter-spacing:4px}
+#juegoHud{top:max(72px,calc(env(safe-area-inset-top) + 66px))}
+.reto{background:var(--card);color:var(--ink);border-radius:28px;padding:10px 20px 10px 10px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 8px 0 rgba(0,0,0,.25);max-width:min(720px,100%);animation:entra .35s cubic-bezier(.3,1.6,.6,1)}
+@keyframes entra{from{transform:scale(.6);opacity:0}}
+.ring{--p:0;flex:none;width:92px;height:92px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--ok) calc(var(--p)*1%),#eee 0)}
+.ring b{width:76px;height:76px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:48px;line-height:1}
+.reto p{margin:0;font-size:clamp(22px,4.6vw,36px);font-weight:800;line-height:1.05}
+.reto .c{padding:0 .25em;border-radius:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.time{height:12px;border-radius:9px;background:rgba(0,0,0,.12);margin-top:8px;overflow:hidden}
+.time i{display:block;height:100%;width:100%;background:var(--warn);border-radius:9px}
+#score{position:fixed;top:max(10px,env(safe-area-inset-top));left:72px;z-index:21;background:rgba(255,255,255,.92);color:var(--ink);
+  border-radius:999px;padding:6px 16px;font-weight:800;font-size:22px;min-height:52px;display:flex;align-items:center;gap:12px}
+#centro{position:fixed;inset:0;display:grid;place-items:center;z-index:6;pointer-events:none;text-align:center}
+#centro div{font-size:clamp(70px,22vw,200px);font-weight:800;text-shadow:0 6px 0 rgba(0,0,0,.35);line-height:1}
+#centro p{font-size:clamp(24px,5vw,44px);font-weight:800;margin:0;background:rgba(28,18,71,.8);padding:8px 22px;border-radius:20px}
+#hint{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:6;
+  background:var(--warn);color:var(--ink);font-weight:800;padding:8px 20px;border-radius:22px;font-size:20px;text-align:center;width:max-content;max-width:calc(100vw - 24px)}
+.stars{font-size:46px;margin:6px 0 2px}
+.rec{color:#ffd60a;font-weight:800;min-height:1.3em}
+.err{background:#ff3b3b;color:#fff;border-radius:16px;padding:10px 14px;margin-top:12px}
+@media (min-aspect-ratio:1/1){#calibHud{bottom:auto;top:max(70px,calc(env(safe-area-inset-top) + 64px))}}
+@media (prefers-reduced-motion:reduce){h1 span,.reto{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<video id="vid" playsinline muted autoplay></video>
+
+<div id="top">
+  <button id="bHome" title="Inicio" hidden>🏠</button>
+  <span class="sp"></span>
+  <button id="bCam" title="Cambiar cámara" hidden>🔄</button>
+  <button id="bSnd" title="Sonido">🔊</button>
+  <button id="bFs" title="Pantalla completa">⛶</button>
+</div>
+<div id="score" hidden><span id="sRonda">1/8</span><span>⭐ <span id="sStars">0</span></span></div>
+
+<section id="inicio" class="panel">
+  <div class="box">
+    <h1>Movete <span>🤸</span></h1>
+    <p class="sub">Poses y aros de colores con la cámara</p>
+    <div class="difs" id="difs">
+      <button data-d="facil"><b>🐣</b>Fácil<small>poses simples</small></button>
+      <button data-d="medio"><b>🦊</b>Medio<small>un pie, estrella…</small></button>
+      <button data-d="dificil"><b>🦁</b>Difícil<small>twister de aros</small></button>
+    </div>
+    <button id="bStart" class="big go">📷 Prender la cámara</button>
+    <a id="bHub" href="https://pf-juegos.vercel.app/?tv" hidden><button class="big" tabindex="-1" style="margin-top:12px">🏠 Todos los juegos</button></a>
+    <div id="err" class="err" hidden></div>
+    <ul class="tips">
+      <li>📱 Apoyá el celu parado, lejos (2–3 m), que se vea <b>todo el cuerpo y la alfombra</b>.</li>
+      <li>⭕ Poné los aros de colores sobre la alfombra. Si no tenés aros, igual se juega con poses.</li>
+      <li>💡 Mejor con buena luz y sin otras personas en la imagen.</li>
+    </ul>
+  </div>
+</section>
+
+<div id="calibHud" class="hud" hidden>
+  <div class="msg"><div id="found">…</div><div id="calibMsg">Salí un ratito de la imagen mientras busco los aros 👀</div>
+    <small>Tocá un aro para sacarlo, o el <b>borde</b> de un aro que falte para sumarlo.</small></div>
+  <div class="row">
+    <button id="bScan">🔍 Buscar de nuevo</button>
+    <button id="bPlay" class="big go">▶️ ¡A jugar!</button>
+  </div>
+</div>
+
+<div id="juegoHud" class="hud" hidden>
+  <div class="reto" id="reto"><div class="ring" id="ring"><b id="rEmoji">🙌</b></div>
+    <div style="flex:1"><p id="rText">¡Manos arriba!</p><div class="time"><i id="rTime"></i></div></div></div>
+</div>
+<div id="centro" hidden><div id="cBig"></div></div>
+<div id="hint" hidden></div>
+
+<section id="fin" class="panel" hidden>
+  <div class="box">
+    <h1>¡Muy bien! <span>🏆</span></h1>
+    <div class="stars" id="fStars"></div>
+    <p class="sub" id="fText"></p>
+    <p class="rec" id="fRec"></p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button id="bAgain" class="big go">🔁 Una más</button>
+      <button id="bAros" class="big">⭕ Mover aros</button>
+      <button id="bInicio" class="big">🏠 Inicio</button>
+    </div>
+  </div>
+</section>
+
+<script type="module">
+{
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), ctx = cv.getContext('2d'), vid = $('#vid');
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+const qs = new URLSearchParams(location.search);
+const hub = qs.get('hub');
+
+// ---------- colores de aros ----------
+const COLORES = [
+  {nombre:'rojo',    css:'#ff3b3b', emoji:'🔴', h:[[345,360],[0,12]]},
+  {nombre:'naranja', css:'#ff8c1a', emoji:'🟠', h:[[12,38]]},
+  {nombre:'amarillo',css:'#f5c400', emoji:'🟡', h:[[38,68]]},
+  {nombre:'verde',   css:'#1fb65e', emoji:'🟢', h:[[68,165]]},
+  {nombre:'azul',    css:'#2f7bff', emoji:'🔵', h:[[165,250]]},
+  {nombre:'violeta', css:'#9b5cff', emoji:'🟣', h:[[250,290]]},
+  {nombre:'rosa',    css:'#ff4fb0', emoji:'🩷', h:[[290,345]]},
+];
+const hueDe = (r,g,b) => { const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0; if(d){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360; }
+  return {h, s: mx? d/mx : 0, v: mx/255, d}; };
+const claseHue = h => COLORES.findIndex(c => c.h.some(([a,b]) => h>=a && h<b));
+
+// Busca aros (blobs saturados por color) en una imagen chica {data,width,height}
+function detectarAros(img){
+  const {data, width:W, height:H} = img, N = W*H, lab = new Int8Array(N);
+  for(let i=0;i<N;i++){ const k=i*4, c=hueDe(data[k],data[k+1],data[k+2]);
+    lab[i] = (c.s>=0.42 && c.v>=0.28 && c.d>=40) ? claseHue(c.h) : -1; }
+  const seen = new Uint8Array(N), q = new Int32Array(N), comps = [];
+  for(let i=0;i<N;i++){
+    if(lab[i]<0 || seen[i]) continue;
+    const c = lab[i]; let h=0, t=0, n=0, x0=W, x1=0, y0=H, y1=0; q[t++]=i; seen[i]=1;
+    while(h<t){ const p=q[h++], x=p%W, y=(p/W)|0; n++;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ const nx=x+dx, ny=y+dy;
+        if(nx<0||ny<0||nx>=W||ny>=H) continue; const np=ny*W+nx;
+        if(!seen[np] && lab[np]===c){ seen[np]=1; q[t++]=np; } } }
+    comps.push({c,n,x0,x1,y0,y1});
+  }
+  const minN = N*0.0012, minSide = W*0.045;
+  let cs = comps.filter(k => k.n>=minN && (k.x1-k.x0)>=minSide && (k.y1-k.y0)>=minSide*0.35 && (k.x1-k.x0)<W*0.75 && (k.y1-k.y0)<H*0.75);
+  // unir pedazos del mismo aro (si una pierna lo tapa)
+  const pad = W*0.03; let cambio = true;
+  while(cambio){ cambio=false;
+    outer: for(let a=0;a<cs.length;a++) for(let b=a+1;b<cs.length;b++){ const A=cs[a], B=cs[b];
+      if(A.c===B.c && A.x0-pad<=B.x1 && B.x0-pad<=A.x1 && A.y0-pad<=B.y1 && B.y0-pad<=A.y1){
+        cs[a]={c:A.c,n:A.n+B.n,x0:Math.min(A.x0,B.x0),x1:Math.max(A.x1,B.x1),y0:Math.min(A.y0,B.y0),y1:Math.max(A.y1,B.y1)};
+        cs.splice(b,1); cambio=true; break outer; } } }
+  return cs.sort((a,b)=>b.n-a.n).slice(0,8).map(aroDeCaja(W,H));
+}
+const aroDeCaja = (W,H) => k => ({color:k.c, cx:(k.x0+k.x1+1)/2/W, cy:(k.y0+k.y1+1)/2/H, rx:(k.x1-k.x0+1)/2/W, ry:(k.y1-k.y0+1)/2/H});
+
+// Suma un aro a partir de un toque: relleno por color parecido desde el píxel más saturado cerca
+function aroDesdeToque(img, nx, ny){
+  const {data, width:W, height:H} = img, px = Math.round(nx*W), py = Math.round(ny*H);
+  let best=-1, bs=0.25;
+  for(let dy=-5;dy<=5;dy++) for(let dx=-5;dx<=5;dx++){ const x=px+dx, y=py+dy; if(x<0||y<0||x>=W||y>=H) continue;
+    const k=(y*W+x)*4, c=hueDe(data[k],data[k+1],data[k+2]); if(c.s>bs && c.v>0.2){ bs=c.s; best=y*W+x; } }
+  if(best<0) return null;
+  const k0=best*4, h0=hueDe(data[k0],data[k0+1],data[k0+2]).h, cls=claseHue(h0);
+  const seen=new Uint8Array(W*H), q=[best]; seen[best]=1; let x0=W,x1=0,y0=H,y1=0,n=0;
+  while(q.length){ const p=q.pop(), x=p%W, y=(p/W)|0; n++;
+    if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+    for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ const nx2=x+dx, ny2=y+dy;
+      if(nx2<0||ny2<0||nx2>=W||ny2>=H) continue; const np=ny2*W+nx2; if(seen[np]) continue;
+      const k=np*4, c=hueDe(data[k],data[k+1],data[k+2]); let dh=Math.abs(c.h-h0); dh=Math.min(dh,360-dh);
+      if(dh<22 && c.s>0.28 && c.v>0.2){ seen[np]=1; q.push(np); } } }
+  if(n<12 || cls<0) return null;
+  return aroDeCaja(W,H)({c:cls,x0,x1,y0,y1});
+}
+
+// ---------- estado ----------
+const S = { screen:'inicio', facing:'user', stream:null, lm:null, L:null, lastPose:0, lastVT:-1, hoops:[], manual:false,
+  diff:'facil', sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
+try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; }catch(e){}
+
+const DIF = {
+  facil:  {hold:0.8, time:15, total:8,  pool:['manosArriba','avion','agachate','cabeza'], aro:['dentro','dentro','manoEn']},
+  medio:  {hold:1.2, time:10, total:10, pool:['manosArriba','avion','agachate','cabeza','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','combo']},
+  dificil:{hold:1.6, time:7,  total:12, pool:['avion','agachate','flamenco','estrella','rodillas','manoDer','manoIzq'], aro:['dentro','manoEn','twister','twister','combo']},
+};
+
+// ---------- poses (P en píxeles de la cámara, m = medidas del cuerpo) ----------
+const mid = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+const PIES = [27,28,29,30,31,32];
+const POSES = {
+  manosArriba:{t:'¡Manos arriba!', e:'🙌', ids:[0,15,16], ok:(P,m)=>P[15].y<P[0].y && P[16].y<P[0].y},
+  avion:      {t:'¡Hacé el avión!', e:'✈️', ids:[11,12,15,16], ok:(P,m)=>Math.abs(P[15].y-m.sh.y)<0.5*m.T && Math.abs(P[16].y-m.sh.y)<0.5*m.T && Math.abs(P[15].x-P[16].x)>2*m.T},
+  cabeza:     {t:'Manos en la cabeza', e:'🙆', ids:[0,11,12,15,16], ok:(P,m)=>dist(P[15],P[0])<0.8*m.T && dist(P[16],P[0])<0.8*m.T && P[15].y<m.sh.y && P[16].y<m.sh.y},
+  agachate:   {t:'¡Agachate como un sapito!', e:'🐸', ids:[11,12,23,24,25,26], ok:(P,m)=>mid(P[25],P[26]).y-m.hp.y < 0.42*m.T},
+  flamenco:   {t:'Parate en un pie, como el flamenco', e:'🦩', ids:[23,24,27,28], ok:(P,m)=>Math.abs(P[27].y-P[28].y)>0.3*m.T},
+  estrella:   {t:'¡Hacé una estrella!', e:'⭐', ids:[11,12,15,16,27,28], ok:(P,m)=>P[15].y<m.sh.y && P[16].y<m.sh.y && Math.abs(P[15].x-P[16].x)>1.5*m.T && Math.abs(P[27].x-P[28].x)>0.75*m.T},
+  rodillas:   {t:'Tocate las rodillas', e:'🦵', ids:[15,16,25,26], ok:(P,m)=>[15,16].every(w=>Math.min(dist(P[w],P[25]),dist(P[w],P[26]))<0.55*m.T)},
+  manoDer:    {t:'Levantá la mano <u>derecha</u>', e:'✋', ids:[0,11,12,15,16], ok:(P,m)=>P[16].y<P[0].y && P[15].y>m.sh.y},
+  manoIzq:    {t:'Levantá la mano <u>izquierda</u>', e:'🤚', ids:[0,11,12,15,16], ok:(P,m)=>P[15].y<P[0].y && P[16].y>m.sh.y},
+};
+const visibles = (L,ids) => ids.every(i => L[i] && (L[i].visibility ?? 1) > 0.5);
+function pix(L){ const w=vid.videoWidth||1, h=vid.videoHeight||1; return L.map(p=>({x:p.x*w, y:p.y*h})); }
+function medidas(P){ const sh=mid(P[11],P[12]), hp=mid(P[23],P[24]); return {sh, hp, T:Math.max(dist(sh,hp),1)}; }
+function pie(L, lado){ const [a,h,f] = lado ? [28,30,32] : [27,29,31];
+  if((L[h].visibility??1)>0.3 && (L[f].visibility??1)>0.3) return mid(L[h],L[f]); return L[a]; }
+const enAro = (p,a,s=1) => { const dx=(p.x-a.cx)/(a.rx*1.12*s), dy=(p.y-a.cy)/(a.ry*1.35*s); return dx*dx+dy*dy<=1; };
+const enColor = (p,c,s) => S.hoops.some(a => a.color===c && enAro(p,a,s));
+const tag = c => `<span class="c" style="background:${COLORES[c].css}">${COLORES[c].nombre}</span>`;
+
+function crearReto(){
+  const D = DIF[S.diff], cols = [...new Set(S.hoops.map(a=>a.color))], g = S.g, ops = [];
+  for(const k of D.pool){ const p = POSES[k];
+    ops.push({key:k, t:p.t, e:p.e, voz:p.t, aros:[], pies:p.ids.some(i=>PIES.includes(i)), ok:(P,m,L)=>visibles(L,p.ids) && p.ok(P,m)}); }
+  const nPose = ops.length, extra = [];
+  const r = a => a[Math.floor(Math.random()*a.length)];
+  if(cols.length) for(const tipo of D.aro){ const c = r(cols), C = COLORES[c];
+    if(tipo==='dentro') extra.push({key:'dentro'+c, t:`Parate adentro del aro ${tag(c)}`, voz:`Parate adentro del aro ${C.nombre}`, e:C.emoji, aros:[c], pies:true,
+      ok:(P,m,L)=>enColor(pie(L,0),c) && enColor(pie(L,1),c)});
+    if(tipo==='manoEn') extra.push({key:'mano'+c, t:`Tocá el aro ${tag(c)} con la mano`, voz:`Tocá el aro ${C.nombre} con la mano`, e:'✋', aros:[c], pies:false,
+      ok:(P,m,L)=>[15,16,19,20].some(i=>(L[i].visibility??1)>0.4 && enColor(L[i],c,1.15))});
+    if(tipo==='combo'){ const k = r(['manosArriba','avion','cabeza']), p = POSES[k];
+      extra.push({key:'combo'+c+k, t:`En el aro ${tag(c)}… ${p.t.toLowerCase()}`, voz:`En el aro ${C.nombre}, ${p.t}`, e:p.e, aros:[c], pies:true,
+        ok:(P,m,L)=>enColor(pie(L,0),c) && enColor(pie(L,1),c) && visibles(L,p.ids) && p.ok(P,m)}); }
+    if(tipo==='twister' && cols.length>1){ const c2 = r(cols.filter(x=>x!==c)), C2 = COLORES[c2];
+      extra.push({key:'tw'+c+c2, t:`Un pie en el ${tag(c)} y otro en el ${tag(c2)}`, voz:`Un pie en el ${C.nombre} y otro en el ${C2.nombre}`, e:'🦶', aros:[c,c2], pies:true,
+        ok:(P,m,L)=>{ const a=pie(L,0), b=pie(L,1); return (enColor(a,c)&&enColor(b,c2)) || (enColor(a,c2)&&enColor(b,c)); }}); }
+  }
+  // mitad y mitad entre poses y aros cuando hay aros
+  let lista = extra.length ? (Math.random()<0.5 ? extra : ops) : ops;
+  lista = lista.filter(o => o.key!==g.lastKey); if(!lista.length) lista = ops.slice(0,nPose).filter(o=>o.key!==g.lastKey);
+  return r(lista);
+}
+
+// ---------- sonido y voz ----------
+let AC;
+function beep(f, d=0.15, type='sine', v=0.2, when=0){ if(!S.sound) return;
+  try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume();
+    const o=AC.createOscillator(), g=AC.createGain(), t0=AC.currentTime+when; o.type=type; o.frequency.value=f;
+    g.gain.setValueAtTime(v,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+d); o.connect(g).connect(AC.destination); o.start(t0); o.stop(t0+d+0.05); }catch(e){} }
+const SND = { ok:()=>[523,659,784,1047].forEach((f,i)=>beep(f,0.2,'triangle',0.22,i*0.08)),
+  fail:()=>{ beep(330,0.25,'sawtooth',0.07); beep(247,0.4,'sawtooth',0.07,0.22); },
+  tick:()=>beep(880,0.08,'square',0.06), go:()=>beep(1175,0.35,'triangle',0.22) };
+function decir(txt){ if(!S.sound || !('speechSynthesis' in window)) return;
+  try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt.replace(/<[^>]+>/g,'').replace(/[^\p{L}\p{N}\s¡!¿?,.]/gu,''));
+    const vs = speechSynthesis.getVoices(); u.voice = vs.find(v=>/^es[-_](AR|419|US|MX)/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
+    u.lang = 'es-AR'; u.rate = 1; u.pitch = 1.15; speechSynthesis.speak(u); }catch(e){} }
+
+// ---------- cámara y detector ----------
+async function cargarDetector(){
+  if(S.lm) return;
+  const mod = await import(MP + '/vision_bundle.mjs');
+  const {FilesetResolver, PoseLandmarker} = mod.FilesetResolver ? mod : mod.default;
+  const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
+  const opts = d => ({baseOptions:{modelAssetPath:MODEL, delegate:d}, runningMode:'VIDEO', numPoses:1,
+    minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5});
+  try{ S.lm = await PoseLandmarker.createFromOptions(fs, opts('GPU')); }
+  catch(e){ S.lm = await PoseLandmarker.createFromOptions(fs, opts('CPU')); }
+}
+async function prenderCamara(){
+  if(S.stream) S.stream.getTracks().forEach(t=>t.stop());
+  S.stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:S.facing, width:{ideal:960}, height:{ideal:540}}});
+  vid.srcObject = S.stream; await vid.play();
+  const st = S.stream.getVideoTracks()[0].getSettings();
+  S.mirror = (st.facingMode || S.facing) !== 'environment';
+}
+let wake;
+async function despierto(){ try{ wake = await navigator.wakeLock?.request('screen'); }catch(e){} }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && S.screen!=='inicio') despierto(); });
+
+const off = document.createElement('canvas'), octx = off.getContext('2d', {willReadFrequently:true});
+function foto(){ const W=200, H=Math.round(200*(vid.videoHeight||540)/(vid.videoWidth||960)); off.width=W; off.height=H;
+  octx.drawImage(vid,0,0,W,H); return octx.getImageData(0,0,W,H); }
+
+// ---------- pantallas ----------
+function mostrar(sc){ S.screen = sc;
+  $('#inicio').hidden = sc!=='inicio'; $('#fin').hidden = sc!=='fin';
+  $('#calibHud').hidden = sc!=='calib'; $('#juegoHud').hidden = true; $('#score').hidden = sc!=='juego';
+  $('#centro').hidden = true; $('#hint').hidden = true;
+  $('#bHome').hidden = sc==='inicio'; $('#bCam').hidden = sc!=='calib';
+  if(sc==='calib'){ S.manual=false; S.scanT=0; }
+}
+function pintarDifs(){ document.querySelectorAll('#difs button').forEach(b=>b.classList.toggle('sel', b.dataset.d===S.diff)); }
+function pintarSnd(){ $('#bSnd').textContent = S.sound ? '🔊' : '🔇'; }
+function centro(html){ const c=$('#centro'); c.hidden=!html; $('#cBig').innerHTML = html||''; }
+
+function pintarAros(){ const f = $('#found');
+  f.textContent = S.hoops.length ? S.hoops.map(a=>COLORES[a.color].emoji).join('') : '⭕❓';
+  if(!S.manual) $('#calibMsg').textContent = S.hoops.length
+    ? `Encontré ${S.hoops.length} aro${S.hoops.length>1?'s':''}. ¿Están todos?`
+    : 'No veo aros todavía. Salí un ratito de la imagen 👀 (o jugá solo con poses)'; }
+
+// ---------- juego ----------
+function empezarJuego(){
+  const D = DIF[S.diff];
+  S.g = {round:0, total:D.total, stars:0, phase:'count', cd:3.2, lastN:0, lastKey:null};
+  mostrar('juego'); $('#sRonda').textContent = `1/${D.total}`; $('#sStars').textContent = '0';
+  decir('¿Listos? ¡Tres, dos, uno!');
+}
+function nuevaRonda(){ const g=S.g, D=DIF[S.diff];
+  g.round++; g.ch = crearReto(); g.lastKey = g.ch.key; g.hold = 0; g.left = D.time; g.phase = 'reto';
+  centro(''); $('#juegoHud').hidden = false; $('#sRonda').textContent = `${g.round}/${g.total}`;
+  const r = $('#reto'); r.style.animation='none'; r.offsetHeight; r.style.animation='';
+  $('#rEmoji').textContent = g.ch.e; $('#rText').innerHTML = g.ch.t;
+  decir(g.ch.voz);
+}
+function terminarRonda(bien){ const g=S.g, D=DIF[S.diff];
+  g.phase = 'pausa'; g.wait = 1.6; $('#juegoHud').hidden = true; $('#hint').hidden = true;
+  if(bien){ const f = g.left/D.time, st = f>0.6?3:f>0.3?2:1; g.stars += st;
+    $('#sStars').textContent = g.stars; SND.ok();
+    centro(`<div>${'⭐'.repeat(st)}</div><p>${['¡Bien!','¡Genial!','¡Muy bien!','¡Bravo!','¡Sos una genia!'][Math.floor(Math.random()*5)]}</p>`);
+    decir(['¡Muy bien!','¡Genial!','¡Bravo!','¡Excelente!'][Math.floor(Math.random()*4)]);
+    festejo(); }
+  else { SND.fail(); centro('<div>⏰</div><p>¡Se acabó el tiempo!</p>'); decir('¡Uy! Vamos con otra'); }
+}
+function fin(){ const g=S.g, max=g.total*3; mostrar('fin');
+  const n = Math.round(g.stars/max*5);
+  $('#fStars').textContent = '⭐'.repeat(Math.max(1,n)) + '☆'.repeat(5-Math.max(1,n));
+  $('#fText').textContent = `Juntaste ${g.stars} estrellas de ${max}`;
+  let rec = 0; try{ rec = +localStorage.getItem('movete-rec-'+S.diff) || 0; }catch(e){}
+  if(g.stars > rec){ try{ localStorage.setItem('movete-rec-'+S.diff, g.stars); }catch(e){}
+    $('#fRec').textContent = '🏆 ¡Nuevo récord!'; decir(`¡Nuevo récord! ${g.stars} estrellas`); festejo(); festejo(); }
+  else { $('#fRec').textContent = `Récord: ${rec} ⭐`; decir(`¡Terminaste! Juntaste ${g.stars} estrellas`); }
+}
+function tick(dt){ const g=S.g; if(!g) return;
+  if(g.phase==='count'){ g.cd -= dt; const n = Math.ceil(g.cd);
+    if(n!==g.lastN){ g.lastN=n; if(n>0){ centro(`<div>${n}</div>`); SND.tick(); } else { centro('<div>¡Ya!</div>'); SND.go(); } }
+    if(g.cd <= -0.4) nuevaRonda(); return; }
+  if(g.phase==='pausa'){ g.wait -= dt; if(g.wait<=0){ g.round>=g.total ? fin() : nuevaRonda(); } return; }
+  if(g.phase!=='reto') return;
+  const h = $('#hint');
+  if(!S.L){ h.hidden=false; h.textContent='👀 ¡No te veo! Ponete frente a la cámara'; return; } // pausa el tiempo
+  const L = S.L, P = pix(L), m = medidas(P);
+  if(g.ch.pies && !visibles(L,[27,28])){ h.hidden=false; h.textContent='🦶 ¡Que se vean los pies!'; } else h.hidden=true;
+  let ok=false; try{ ok = g.ch.ok(P,m,L); }catch(e){}
+  g.ok = ok; g.left -= dt;
+  g.hold = ok ? g.hold+dt : Math.max(0, g.hold-dt*1.5);
+  const D = DIF[S.diff];
+  $('#ring').style.setProperty('--p', Math.min(100, g.hold/D.hold*100));
+  $('#rTime').style.width = Math.max(0, g.left/D.time*100)+'%';
+  if(g.hold >= D.hold) terminarRonda(true); else if(g.left<=0) terminarRonda(false);
+}
+function festejo(){ const W=cv.width, H=cv.height, cols=['#ff3b3b','#ffd60a','#1fb65e','#2f7bff','#ff4fb0','#9b5cff'];
+  for(let i=0;i<70;i++) S.fx.push({x:W/2, y:H*0.45, vx:(Math.random()-0.5)*W*0.9, vy:-Math.random()*H*0.9, r:4+Math.random()*7, c:cols[i%6], life:1.6}); }
+
+// ---------- dibujo ----------
+const HUESOS = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,31],[28,32],[27,29],[28,30]];
+function map(nx, ny){ const f=S.fit; return [f.ox + (S.mirror?1-nx:nx)*f.dw, f.oy + ny*f.dh]; }
+function draw(t, dt){
+  const dpr = Math.min(2, devicePixelRatio||1), W = Math.round(innerWidth*dpr), H = Math.round(innerHeight*dpr);
+  if(cv.width!==W || cv.height!==H){ cv.width=W; cv.height=H; }
+  ctx.fillStyle = '#1c1247'; ctx.fillRect(0,0,W,H);
+  if(S.screen==='inicio' || S.screen==='fin' || !vid.videoWidth) return;
+  const vw=vid.videoWidth, vh=vid.videoHeight, sc=Math.min(W/vw, H/vh), dw=vw*sc, dh=vh*sc, ox=(W-dw)/2, oy=(H-dh)/2;
+  S.fit = {ox,oy,dw,dh};
+  ctx.save(); if(S.mirror){ ctx.translate(ox+dw,oy); ctx.scale(-1,1); ctx.drawImage(vid,0,0,dw,dh); } else ctx.drawImage(vid,ox,oy,dw,dh); ctx.restore();
+  // aros
+  const objetivo = S.screen==='juego' && S.g?.phase==='reto' ? S.g.ch.aros : [];
+  for(const a of S.hoops){ const [x,y]=map(a.cx,a.cy), C=COLORES[a.color], hot=objetivo.includes(a.color);
+    const pul = hot ? 1+0.06*Math.sin(t/120) : 1;
+    ctx.beginPath(); ctx.ellipse(x,y,a.rx*dw*1.05*pul,a.ry*dh*1.05*pul,0,0,Math.PI*2);
+    if(hot){ ctx.fillStyle = C.css+'40'; ctx.fill(); ctx.lineWidth = 16*dpr; ctx.strokeStyle = '#fff'; ctx.stroke(); }
+    ctx.lineWidth = (hot?9:5)*dpr; ctx.strokeStyle = C.css; ctx.stroke();
+    if(S.screen==='calib' || hot){ ctx.font = `${28*dpr}px system-ui`; ctx.textAlign='center'; ctx.fillText(C.emoji, x, y-a.ry*dh-10*dpr); } }
+  // esqueleto
+  if(S.L && S.screen!=='calib'){ const L=S.L, okc = S.g?.ok ? '#21c46b' : '#ffffff';
+    ctx.lineCap='round'; ctx.lineWidth=7*dpr; ctx.strokeStyle = okc+'cc';
+    for(const [a,b] of HUESOS){ if((L[a].visibility??1)<0.4 || (L[b].visibility??1)<0.4) continue;
+      const [x1,y1]=map(L[a].x,L[a].y), [x2,y2]=map(L[b].x,L[b].y); ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+    for(const [i,c] of [[15,'#ffd60a'],[16,'#ffd60a'],[0,'#ff4fb0']]) if((L[i].visibility??1)>0.4){ const [x,y]=map(L[i].x,L[i].y);
+      ctx.beginPath(); ctx.arc(x,y,11*dpr,0,7); ctx.fillStyle=c; ctx.fill(); }
+    for(const lado of [0,1]){ const p=pie(L,lado); if((L[lado?28:27].visibility??1)<0.4) continue; const [x,y]=map(p.x,p.y);
+      ctx.beginPath(); ctx.arc(x,y,14*dpr,0,7); ctx.fillStyle='#2f7bff'; ctx.fill(); ctx.lineWidth=4*dpr; ctx.strokeStyle='#fff'; ctx.stroke(); } }
+  // papelitos
+  S.fx = S.fx.filter(p=>(p.life-=dt)>0);
+  for(const p of S.fx){ p.vy += H*1.4*dt; p.x += p.vx*dt; p.y += p.vy*dt; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.r*dpr,p.r*dpr*1.6); }
+}
+
+// ---------- bucle ----------
+let lt = 0;
+function loop(t){ requestAnimationFrame(loop); const dt = Math.min(0.1, (t-(lt||t))/1000); lt = t;
+  if(S.lm && vid.readyState>=2 && S.screen!=='inicio' && S.screen!=='fin' && vid.currentTime!==S.lastVT){
+    S.lastVT = vid.currentTime;
+    try{ const r = S.lm.detectForVideo(vid, t), L = r.landmarks && r.landmarks[0];
+      if(L){ S.L = L; S.lastPose = t; } else if(t-S.lastPose>500) S.L = null; }catch(e){} }
+  if(S.screen==='calib' && vid.videoWidth && !S.manual && t-S.scanT>700){ S.scanT=t;
+    try{ S.hoops = detectarAros(foto()); pintarAros(); }catch(e){} }
+  if(S.screen==='juego') tick(dt);
+  draw(t, dt);
+}
+requestAnimationFrame(loop);
+
+// ---------- eventos ----------
+document.querySelectorAll('#difs button').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; pintarDifs(); try{localStorage.setItem('movete-dif',S.diff);}catch(e){} });
+$('#bStart').onclick = async ()=>{
+  const b = $('#bStart'), err = $('#err'); err.hidden = true; b.disabled = true;
+  beep(660,0.05); decir('¡Vamos a movernos!'); despierto();
+  try{
+    b.textContent = '📷 Prendiendo la cámara…'; await prenderCamara();
+    b.textContent = '🧠 Cargando el detector…'; await cargarDetector();
+    mostrar('calib'); pintarAros();
+  }catch(e){ err.hidden=false;
+    err.textContent = e && e.name==='NotAllowedError' ? 'Necesito permiso para usar la cámara 📷. Habilitalo en el navegador y probá de nuevo.'
+      : 'No pude arrancar: ' + (e && e.message || e) + ' (¿hay internet?)'; }
+  b.disabled = false; b.textContent = '📷 Prender la cámara';
+};
+$('#bScan').onclick = ()=>{ S.manual=false; S.scanT=0; $('#calibMsg').textContent='Buscando… salí un ratito de la imagen 👀'; };
+$('#bPlay').onclick = empezarJuego;
+$('#bAgain').onclick = empezarJuego;
+$('#bAros').onclick = ()=>mostrar('calib');
+$('#bInicio').onclick = $('#bHome').onclick = ()=>{ S.g=null; mostrar('inicio'); try{speechSynthesis.cancel();}catch(e){} };
+$('#bCam').onclick = async ()=>{ S.facing = S.facing==='user' ? 'environment' : 'user';
+  try{ await prenderCamara(); S.manual=false; S.scanT=0; }catch(e){ S.facing = S.facing==='user' ? 'environment' : 'user'; } };
+$('#bSnd').onclick = ()=>{ S.sound=!S.sound; pintarSnd(); try{localStorage.setItem('movete-snd',S.sound?'1':'0');}catch(e){} if(!S.sound) try{speechSynthesis.cancel();}catch(e){} };
+$('#bFs').onclick = ()=>{ const d=document, el=d.documentElement;
+  if(d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen||d.webkitExitFullscreen).call(d);
+  else (el.requestFullscreen||el.webkitRequestFullscreen)?.call(el)?.catch?.(()=>{}); };
+const fsCambio = ()=>{ $('#bFs').textContent = (document.fullscreenElement||document.webkitFullscreenElement) ? '🗗' : '⛶'; };
+document.addEventListener('fullscreenchange', fsCambio); document.addEventListener('webkitfullscreenchange', fsCambio);
+if(!(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen) || matchMedia('(display-mode: standalone)').matches) $('#bFs').hidden = true;
+// tocar la imagen en calibración: sacar o sumar aros
+cv.addEventListener('pointerdown', e=>{
+  if(S.screen!=='calib' || !vid.videoWidth) return;
+  const dpr = Math.min(2, devicePixelRatio||1), f=S.fit;
+  let nx = (e.clientX*dpr - f.ox)/f.dw, ny = (e.clientY*dpr - f.oy)/f.dh; if(nx<0||ny<0||nx>1||ny>1) return;
+  if(S.mirror) nx = 1-nx;
+  S.manual = true;
+  const i = S.hoops.findIndex(a=>enAro({x:nx,y:ny},a,0.9));
+  if(i>=0){ S.hoops.splice(i,1); beep(300,0.1); $('#calibMsg').textContent='Saqué ese aro ✂️'; }
+  else { const a = aroDesdeToque(foto(), nx, ny);
+    if(a){ S.hoops.push(a); beep(880,0.1); $('#calibMsg').textContent=`Sumé el aro ${COLORES[a.color].nombre} ${COLORES[a.color].emoji}`; }
+    else $('#calibMsg').textContent='No encontré color ahí. Tocá justo el borde del aro.'; }
+  pintarAros();
+});
+if(hub) $('#bHub').hidden = false;
+pintarDifs(); pintarSnd();
+if('speechSynthesis' in window) speechSynthesis.getVoices();
+window.__movete = {detectarAros, aroDesdeToque, foto, mostrar, pintarAros, empezarJuego, S}; // para pruebas
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Movete 🤸 (prueba de concepto)
+
+Juego de movimiento con la cámara: detecta el cuerpo (MediaPipe Pose, en el navegador) y los aros de colores sobre la alfombra, y pide poses y "twister" de aros.
+
+- Un solo `index.html`, sin build. Necesita HTTPS (Vercel) para usar la cámara e internet para bajar el detector.
+- Flujo: elegir dificultad → prender cámara → buscar aros (tocar para sacar/sumar) → 8–12 retos con voz, estrellas y récord por dificultad.
+- Retos: manos arriba, avión, manos en la cabeza, sapito, flamenco, estrella, rodillas, mano derecha/izquierda, parate en el aro X, tocá el aro X con la mano, un pie en X y otro en Y, combos.
+- Oculto en el índice (`"hidden": true`) hasta que deje de ser prueba.
