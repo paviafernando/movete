@@ -5,11 +5,20 @@
   "color": "#7b3cff",
   "group": "Movimiento",
   "order": 60,
-  "desc": "Poses, caras y máscaras de personajes con la cámara: ¡a moverse!",
-  "tags": ["📷 Usa la cámara", "🤸 Poses", "😜 Caras", "🎭 Máscaras"],
+  "desc": "Poses, caras, máscaras y modo baby con la cámara del celu: ¡a moverse!",
+  "tags": [
+    "📺 Tele + celu cámara",
+    "🤸 Poses",
+    "😜 Caras",
+    "👶 Baby"
+  ],
   "url": "https://movete-nine.vercel.app",
-  "players": { "min": 1, "max": 1 },
+  "players": {
+    "min": 1,
+    "max": 1
+  },
   "tv": "/?hub={code}",
   "solo": "/",
-  "needsInternet": true
+  "needsInternet": true,
+  "pad": "/?c={code}&hub={code}"
 }

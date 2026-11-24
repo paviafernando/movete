@@ -11,6 +11,7 @@ Juego de movimiento con la cámara: detecta el cuerpo (MediaPipe Pose, en el nav
 - **Dibujar con la mano** (Medio y Difícil): círculo, triángulo, cuadrado, corazón, zigzag, espiral, estrella e infinito, siguiendo puntitos; en Difícil con la mano derecha o izquierda.
 - **Modo Baby** 👶 (1 a 2 años): burbujas para reventar con el cuerpo, música de cajita y consignas simples (aplaudir, avión, pajarito, arriba las manos, chau chau, ¿dónde está?, cabeza, panza, sapito, bailar, pisar fuerte). Nunca se pierde. Tira de arriba para que el adulto elija la actividad, ⏭ para pasar y 📌 para repetir siempre la misma. Una ⭐ por logro y gran festejo cada 3.
 - **Look de videojuego**: fondo animado, esqueleto neón, estelas en las manos, muñequito con escenario en modo sin imagen, puntos con rachas (x2…x5), monedas y niveles que se guardan.
+- **Tele + celu como cámara** 📺📱: la tele abre una sala (`?tv`, o `?hub=CODE` desde el índice) y muestra un QR; el celu entra con `?c=CODE`, detecta el cuerpo o la cara con MediaPipe y manda los puntos (datos) y la imagen (video) por WebRTC con PeerJS (sala `movete-tv-CODE`). La tele no necesita cámara.
 - **Voz**: elige sola la voz más natural del dispositivo; el botón 🗣️ permite probar y elegir otra.
 - **Sin imagen** 🙈: en vez de la cámara se ve un muñequito con la cabeza del emoji elegido.
 - Vigilante: si la cámara o el detector se traban, se recuperan solos (y pasa a CPU si la GPU falla). `?debug` muestra valores, detecciones por segundo y errores.
