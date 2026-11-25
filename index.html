@@ -196,7 +196,7 @@ body.tvmode #bSoyCam{display:none}
     <div id="camBox" class="cambox" hidden><input id="camCode" inputmode="numeric" maxlength="4" placeholder="0000" aria-label="Código de la tele"><button id="camGo" class="go">Conectar</button></div>
     <div id="tvBox" class="tvbox" hidden><div id="qr"></div><div><b>📱 Usá el celu como cámara</b>
       <p>Escaneá el QR con el celu, o en el celu entrá a <b>movete-nine.vercel.app</b>, tocá <b>“📱 Este celu es la cámara”</b> y poné el código:</p><div id="tvCode">····</div>
-      <p id="tvEstado">Esperando al celu…</p></div></div>
+      <p id="tvEstado">Esperando al celu…</p><button id="bVozEn" class="voz">🗣️ Habla: automático</button></div></div>
     <div><button id="bHub" class="big" hidden style="margin-top:12px">🏠 Todos los juegos</button></div>
     <div id="err" class="err" hidden></div>
     <details class="tips"><summary>❓ ¿Cómo se juega?</summary><ul>
@@ -230,7 +230,7 @@ body.tvmode #bSoyCam{display:none}
 <div id="espejo" hidden></div>
 <div id="padUi" hidden>
   <div class="padTop"><div id="padEstado">📺 Buscando la tele…</div><p class="padTip" id="padTip">Apoyá el celu parado, lejos, mirando a quien juega. ¡Todo se ve en la tele!</p></div>
-  <div class="padBtns"><button id="bPadCam" class="big">🔄 Cámara</button><button id="bPadHome" class="big">🏠</button></div>
+  <div class="padBtns"><button id="bPadVoz" class="big go">🔊 Activar voz</button><button id="bPadCam" class="big">🔄 Cámara</button><button id="bPadHome" class="big">🏠</button></div>
 </div>
 <div id="mascHud" class="hud" hidden><button id="bJugarM" class="big go">▶ ¡A jugar con la máscara!</button><div class="masks" id="masks"></div></div>
 
@@ -327,7 +327,7 @@ function aroDesdeToque(img, nx, ny){
 // ---------- estado ----------
 const S = { screen:'inicio', facing:'user', stream:null, lm:null, L:null, lastPose:0, lastVT:-1, hoops:[], manual:false,
   diff:'facil', modo:'cuerpo', aros:false, mask:0, ocultar:false, ms:null, chispas:[], hist:[], sparks:[], prevH:{}, shake:0, coins:0, voz:'', err:0, lastProc:0, cpu:false, F:null, lmCara:null, sound:true, g:null, fx:[], fit:{ox:0,oy:0,dw:1,dh:1}, scanT:0 };
-try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; S.modo = localStorage.getItem('movete-modo') || 'cuerpo'; S.aros = localStorage.getItem('movete-aros')==='1'; S.mask = +localStorage.getItem('movete-mask') || 0; S.ocultar = localStorage.getItem('movete-ocultar')==='1'; S.coins = +localStorage.getItem('movete-monedas') || 0; S.voz = localStorage.getItem('movete-voz') || ''; }catch(e){}
+try{ S.diff = localStorage.getItem('movete-dif') || 'facil'; S.sound = localStorage.getItem('movete-snd')!=='0'; S.modo = localStorage.getItem('movete-modo') || 'cuerpo'; S.aros = localStorage.getItem('movete-aros')==='1'; S.mask = +localStorage.getItem('movete-mask') || 0; S.ocultar = localStorage.getItem('movete-ocultar')==='1'; S.coins = +localStorage.getItem('movete-monedas') || 0; S.voz = localStorage.getItem('movete-voz') || ''; S.vozEn = localStorage.getItem('movete-vozen') || 'auto'; }catch(e){}
 
 const DIF = {
   facil:  {hold:0.8, time:15, total:8,  ni:0, movs:['saltar','aplaudir','mono','correr','piernas','sentadilla','pajarito'], dib:[], cara:['sonrisa','boca','ojos','trompita','cachetes'], pool:['manosArriba','avion','agachate','cabeza','jarra','abrazo','corazon'], aro:['dentro','dentro','manoEn']},
@@ -552,7 +552,9 @@ function cargarVoces(){ try{ VOCES = speechSynthesis.getVoices().filter(v=>/^es/
 function vozElegida(){ return (S.voz && VOCES.find(v=>v.name===S.voz)) || VOCES[0] || null; }
 function pintarVoz(){ const b=document.querySelector('#bVoz'); if(!b) return; const v=vozElegida();
   b.textContent = '🗣️ Voz: ' + (v ? v.name.replace(/\(.*?\)|Microsoft|Google|Online|- Spanish.*$/gi,'').trim().slice(0,28) + (S.voz?'':' (auto)') : 'la del celu'); }
-function decir(txt){ if(!S.sound || !('speechSynthesis' in window)) return;
+function vozEnCelu(){ return S.remoto && S.conn && S.conn.open && (S.vozEn==='celu' || (S.vozEn!=='tele' && !VOCES.length)); }
+function pintarVozEn(){ const b=document.querySelector('#bVozEn'); if(b) b.textContent = '🗣️ Habla: ' + ({auto:'automático', tele:'la tele', celu:'el celu'}[S.vozEn||'auto']); }
+function decir(txt){ if(!S.sound) return; if(vozEnCelu()){ enviar({t:'decir', txt}); return; } if(!('speechSynthesis' in window)) return;
   try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt.replace(/<[^>]+>/g,'').replace(/[^\p{L}\p{N}\s¡!¿?,.]/gu,''));
     const v = vozElegida(); if(v){ u.voice = v; u.lang = v.lang; } else u.lang = 'es-AR';
     const natural = v && /natural|neural|online|premium|enhanced|mejorad|wavenet|studio/i.test(v.name);
@@ -953,7 +955,7 @@ async function modoCamara(code){
     const conn = pend = peer.connect(PREF+code, {serialization:'json', reliable:false});
     conn.on('open', ()=>{ S.conn = conn; est.textContent = `✅ Conectado a la tele ${code}`; est.classList.add('ok'); beep(880,0.1);
       enviar({t:'cam', w:vid.videoWidth, h:vid.videoHeight}); llamarTele(); });
-    conn.on('data', async m=>{ if(m?.t==='home'){ location.href = hub ? 'https://pf-juegos.vercel.app/?j='+hub : location.pathname; }
+    conn.on('data', async m=>{ if(m?.t==='decir'){ decir(m.txt); return; } if(m?.t==='home'){ location.href = hub ? 'https://pf-juegos.vercel.app/?j='+hub : location.pathname; }
       if(m?.t==='modo' && m.modo!==S.modo){ S.modo = m.modo; S.L = null; S.F = null; try{ await cargarDetector(); }catch(e){} } });
     conn.on('close', ()=>{ S.conn = null; est.classList.remove('ok');
       if(hub){ location.href = 'https://pf-juegos.vercel.app/?j='+hub; } else { est.textContent = '📺 Se cortó. Reconectando…'; setTimeout(conectar, 1500); } });
@@ -1047,10 +1049,13 @@ cv.addEventListener('pointerdown', e=>{
 });
 if(hub) $('#bHub').hidden = false;
 $('#bHub').onclick = ()=>{ enviar({t:'home'}); setTimeout(()=>{ location.href = 'https://pf-juegos.vercel.app/?tv'; }, 300); };
+$('#bVozEn').onclick = ()=>{ const o=['auto','tele','celu']; S.vozEn = o[(o.indexOf(S.vozEn||'auto')+1)%3]; try{localStorage.setItem('movete-vozen',S.vozEn);}catch(e){} pintarVozEn(); decir('¡Hola! Así suena la voz'); };
+pintarVozEn();
 $('#bSoyCam').onclick = ()=>{ $('#camBox').hidden = false; $('#camCode').focus(); };
 $('#camGo').onclick = ()=>{ const c = $('#camCode').value.replace(/\D/g,''); if(c.length===4) location.href = location.pathname + '?c=' + c; else $('#camCode').focus(); };
 $('#camCode').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#camGo').click(); });
 $('#bTv').onclick = ()=>{ $('#tvBox').hidden = false; $('#bTv').hidden = true; abrirSala(); };
+$('#bPadVoz').onclick = ()=>{ S.sound = true; decir('¡Listo! Yo te voy a decir qué hacer'); $('#bPadVoz').textContent = '🔊 Voz lista'; };
 $('#bPadCam').onclick = async ()=>{ S.facing = S.facing==='user' ? 'environment' : 'user'; try{ await prenderCamara(); llamarTele(); }catch(e){} };
 $('#bPadHome').onclick = ()=>{ location.href = hub ? 'https://pf-juegos.vercel.app/?j='+hub : location.pathname; };
 if(qs.get('c')) modoCamara(qs.get('c')); else if(hub || qs.has('tv')){ $('#tvBox').hidden = false; $('#bTv').hidden = true; abrirSala(); }
